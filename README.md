@@ -1,26 +1,26 @@
 # FlowTrack
 
-Este projeto È um sistema de gerenciamento de fluxos, construÌdo com um backend em Spring Boot e um frontend em Next.js/React.
+Este projeto √© um sistema de gerenciamento de fluxos, constru√≠do com um backend em Spring Boot e um frontend em Next.js/React.
 
-## ? Tecnologias Utilizadas
+## üöÄ Tecnologias Utilizadas
 
 * **Backend:** Spring Boot, Java 21, Spring Data JPA, Maven
 * **Frontend:** Next.js, React
 * **Banco de Dados:** PostgreSQL
 
-## ? PrÈ-requisitos
+## üìã Pr√©-requisitos
 
-Para rodar este projeto, vocÍ precisar· ter instalado em sua m·quina:
+Para rodar este projeto, voc√™ precisar√° ter instalado em sua m√°quina:
 
 * [JDK 21](https://www.oracle.com/java/technologies/downloads/#java21) (ou superior)
-* [Apache Maven](https://maven.apache.org/download.cgi) (ou use o wrapper `mvnw` incluÌdo)
-* [Node.js](https://nodejs.org/) (vers„o 18.x ou superior)
-* Uma inst‚ncia local do PostgreSQL (necess·rio para rodar na rede UFRN)
+* [Apache Maven](https://maven.apache.org/download.cgi) (ou use o wrapper `mvnw` inclu√≠do)
+* [Node.js](https://nodejs.org/) (vers√£o 18.x ou superior)
+* Uma inst√¢ncia local do PostgreSQL (necess√°rio para rodar na rede UFRN)
 
-## ? Rodando o Backend (Spring Boot)
+## üèÅ Rodando o Backend (Spring Boot)
 
-1.  Navegue atÈ o diretÛrio do backend (a raiz do projeto Spring).
-2.  Configure o banco de dados (leia a seÁ„o sobre a UFRN abaixo).
+1.  Navegue at√© o diret√≥rio do backend (a raiz do projeto Spring).
+2.  Configure o banco de dados (leia a se√ß√£o sobre a UFRN abaixo).
 3.  Execute o projeto usando o Maven wrapper:
 
     * No Linux/macOS:
@@ -31,13 +31,13 @@ Para rodar este projeto, vocÍ precisar· ter instalado em sua m·quina:
         ```bash
         .\mvnw.cmd spring-boot:run
         ```
-4.  A API estar· disponÌvel em `http://localhost:8080/api`.
-5.  A documentaÁ„o da API (Swagger) est· disponÌvel em `http://localhost:8080/swagger-ui.html`.
+4.  A API estar√° dispon√≠vel em `http://localhost:8080/api`.
+5.  A documenta√ß√£o da API (Swagger) est√° dispon√≠vel em `http://localhost:8080/swagger-ui.html`.
 
-## ?? Rodando o Frontend (Next.js)
+## üñ•Ô∏è Rodando o Frontend (Next.js)
 
-1.  Navegue atÈ o diretÛrio do frontend.
-2.  Instale as dependÍncias:
+1.  Navegue at√© o diret√≥rio do frontend.
+2.  Instale as depend√™ncias:
     ```bash
     npm install
     ```
@@ -49,29 +49,29 @@ Para rodar este projeto, vocÍ precisar· ter instalado em sua m·quina:
 
 ---
 
-## ?? AtenÁ„o: ConfiguraÁ„o do Banco de Dados (Rede UFRN)
+## ‚ö†Ô∏è Aten√ß√£o: Configura√ß√£o do Banco de Dados (Rede UFRN)
 
-A rede da UFRN (incluindo a Eduroam) **bloqueia o acesso** ao nosso banco de dados de produÁ„o hospedado na nuvem.
+A rede da UFRN (incluindo a Eduroam) **bloqueia o acesso** ao nosso banco de dados de produ√ß√£o hospedado na nuvem.
 
-Se vocÍ estiver na rede da UFRN, **vocÍ deve** usar uma inst‚ncia local do PostgreSQL.
+Se voc√™ estiver na rede da UFRN, **voc√™ deve** usar uma inst√¢ncia local do PostgreSQL.
 
-O arquivo `src/main/resources/application.properties` no projeto backend est· configurado para o banco de produÁ„o, mas **contÈm uma seÁ„o comentada para o ambiente local**.
+O arquivo `src/main/resources/application.properties` no projeto backend est√° configurado para o banco de produ√ß√£o, mas **cont√©m uma se√ß√£o comentada para o ambiente local**.
 
 ### Como configurar o banco local:
 
-1.  Certifique-se de que vocÍ tem o PostgreSQL instalado e rodando em sua m·quina (normalmente na porta `5432`).
+1.  Certifique-se de que voc√™ tem o PostgreSQL instalado e rodando em sua m√°quina (normalmente na porta `5432`).
 2.  Crie um novo banco de dados (ex: `flowtrack`).
 3.  Abra o arquivo `src/main/resources/application.properties`.
-4.  **Comente** o bloco de `PRODU«√O / AIVEN`.
-5.  **Descomente** o bloco `AMBIENTE LOCAL` e ajuste o nome do banco, usu·rio e senha conforme a sua configuraÁ„o local.
+4.  **Comente** o bloco de `PRODU√á√ÉO / AIVEN`.
+5.  **Descomente** o bloco `AMBIENTE LOCAL` e ajuste o nome do banco, usu√°rio e senha conforme a sua configura√ß√£o local.
 
 ---
 
-## ? Como Contribuir
+## ü§ù Como Contribuir
 
-Para manter a organizaÁ„o do projeto, siga o fluxo de contribuiÁ„o abaixo:
+Para manter a organiza√ß√£o do projeto, siga o fluxo de contribui√ß√£o abaixo:
 
-1.  Sempre puxe as atualizaÁıes mais recentes da branch principal:
+1.  Sempre puxe as atualiza√ß√µes mais recentes da branch principal:
     ```bash
     git checkout main
     git pull origin main
@@ -80,10 +80,11 @@ Para manter a organizaÁ„o do projeto, siga o fluxo de contribuiÁ„o abaixo:
     ```bash
     git checkout -b feature/nome-da-sua-tarefa
     ```
-3.  ApÛs concluir suas alteraÁıes e testar, faÁa o commit e envie sua branch para o repositÛrio remoto:
+3.  Ap√≥s concluir suas altera√ß√µes e testar, fa√ßa o commit e envie sua branch para o reposit√≥rio remoto:
     ```bash
     git add .
-    git commit -m "feat: descreva sua alteraÁ„o"
+    git commit -m "feat: descreva sua altera√ß√£o"
     git push origin feature/nome-da-sua-tarefa
     ```
 4.  Abra um **Pull Request (PR)** da sua branch para a branch `main`.
+5.  Aguarde a revis√£o do c√≥digo.
