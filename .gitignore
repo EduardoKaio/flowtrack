@@ -1,0 +1,73 @@
+# ============================================
+# IDE & Arquivos do Sistema
+# ============================================
+.idea/
+.vscode/
+*.iml
+*.project
+*.classpath
+.settings/
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Backend (Java / Spring Boot / Maven)
+# ============================================
+
+# Arquivos de log
+*.log
+logs/
+
+# Pasta de build do Maven
+target/
+
+# Arquivos de pacote do Maven
+*.jar
+*.war
+
+# Arquivos de configuração da IDE
+.project
+.classpath
+.settings
+
+# Arquivos do Flyway
+# Se você tiver arquivos de log ou build do Flyway
+flyway.log
+flyway-report.html
+
+# =Settings de IDE específicos do Java
+.factorypath
+build/
+
+# ============================================
+# Frontend (Node.js / Next.js / React)
+# ============================================
+
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Pasta de build do Next.js
+.next/
+
+# Pasta de build de produção (caso use `next export`)
+out/
+
+# Pasta de build (genérico)
+build/
+
+# Arquivos de ambiente local (MUITO IMPORTANTE)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Arquivos de log do NPM/Yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache de testes
+.jest-cache
