@@ -11,6 +11,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    @Query("SELECT t FROM Task t WHERE LOWER(t.titulo) LIKE LOWER(:titulo)")
+    @Query("SELECT t FROM Task t WHERE LOWER(t.titulo) LIKE LOWER(CONCAT('%', :titulo, '%'))")
     Page<Task> findByTitle(@Param("titulo") String titulo, Pageable pageable);
 }

@@ -58,4 +58,9 @@ public class TaskService {
     }
 
 
+    public Page<TaskDTO> getTasksByTitle(String titulo, Pageable pageable) {
+        String tituloLike = "%" + titulo.toLowerCase() + "%";
+        return taskRepository.findByTitle(tituloLike, pageable)
+                .map(taskMapper::taskParaTaskDTO);
+    }
 }
