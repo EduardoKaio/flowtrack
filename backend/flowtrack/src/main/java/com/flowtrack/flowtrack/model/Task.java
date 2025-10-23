@@ -21,7 +21,7 @@ public class Task {
 
     private String titulo;
     private String descricao;
-    private LocalDate dataCriacao;
+    private LocalDate dataCriacao = LocalDate.now();
     private LocalDate dataConclusao;
     private boolean concluida;
     private Integer prioridade; // 1 (alta) 2 (média) 3 (baixa)
@@ -30,5 +30,6 @@ public class Task {
 //    private Category categoria;
 
     @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
     private User usuario;
 }

@@ -1,10 +1,16 @@
 package com.flowtrack.flowtrack.dto;
 
 import com.flowtrack.flowtrack.model.User;
+import lombok.*;
 
 import java.time.LocalDate;
 
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 public class TaskDTO {
+    private Long id;
     private String titulo;
     private String descricao;
     private LocalDate dataCriacao;
