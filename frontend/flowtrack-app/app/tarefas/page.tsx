@@ -23,15 +23,16 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
+import { getAllTasks, createTask } from "@/lib/api/tasks"
 
 interface Task {
   id: number
-  title: string
-  description: string
-  category: string
-  priority: "baixa" | "média" | "alta"
-  dueDate: string
-  completed: boolean
+  titulo: string
+  descricao: string
+  categoria: string
+  prioridade: number
+  dataConclusao: string
+  concluida: boolean  
 }
 
 const categories = [
@@ -42,36 +43,60 @@ const categories = [
   { id: "pessoal", name: "Pessoal", color: "bg-pink-500" },
 ]
 
+function mapPriorityForFrontend(priority: number): "baixa" | "média" | "alta" {
+  switch (priority) {
+    case 1:
+      return "baixa"
+    case 2:
+      return "média"
+    case 3:
+      return "alta"
+    default:
+      return "baixa"
+  }
+}
+
+function mapPriorityForBackend(priority: "baixa" | "média" | "alta"): number {
+  switch (priority) {
+    case "baixa":
+      return 1
+    case "média":
+      return 2
+    case "alta":
+      return 3
+    default:
+      return 1
+  }
+}
+
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 1,
-      title: "Revisar relatório mensal",
-      description: "Analisar métricas e preparar apresentação",
-      category: "trabalho",
-      priority: "alta",
-      dueDate: "2025-10-16",
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Estudar React avançado",
-      description: "Completar módulo sobre hooks customizados",
-      category: "estudo",
-      priority: "média",
-      dueDate: "2025-10-17",
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Fazer exercícios físicos",
-      description: "30 minutos de corrida",
-      category: "saude",
-      priority: "alta",
-      dueDate: "2025-10-15",
-      completed: true,
-    },
-  ])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        setLoading(true)
+        const data = await getAllTasks()
+        const mappedTasks = data.map((task: any) => ({
+        ...task,
+        prioridade: mapPriorityForFrontend(task.priority),
+        }))
+        console.log(mappedTasks)
+        
+        setTasks(mappedTasks)
+      } catch (err) {
+        console.error("Erro ao carregar tarefas:", err)
+        setError("Falha ao carregar tarefas")
+        // Fallback para dados mockados se necessário
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadTasks()
+  }, [])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -80,11 +105,11 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState<string>("")
 
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "trabalho",
-    priority: "média" as "baixa" | "média" | "alta",
-    dueDate: "",
+    titulo: "",
+    descricao: "",
+    categoria: "trabalho",
+    prioridade: mapPriorityForFrontend(2),
+    dataConclusao: "",
   })
 
   useEffect(() => {
@@ -95,28 +120,34 @@ export default function TasksPage() {
     }
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingTask) {
-      setTasks(tasks.map((task) => (task.id === editingTask.id ? { ...task, ...formData } : task)))
-    } else {
-      const newTask: Task = {
-        id: Date.now(),
-        ...formData,
-        completed: false,
-      }
-      setTasks([...tasks, newTask])
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  try {
+    const newTask = await createTask({
+      titulo: formData.titulo,
+      descricao: formData.descricao,
+      categoria: formData.categoria,
+      prioridade: mapPriorityForBackend(formData.prioridade),
+      dataConclusao: formData.dataConclusao,
+      concluida: false
+    })
+    
+    setTasks([...tasks, newTask])
     resetForm()
+  } catch (error) {
+    console.error("Erro ao criar tarefa:", error)
+    
   }
+}
 
   const resetForm = () => {
     setFormData({
-      title: "",
-      description: "",
-      category: "trabalho",
-      priority: "média",
-      dueDate: "",
+      titulo: "",
+      descricao: "",
+      categoria: "trabalho",
+      prioridade: "média",
+      dataConclusao: "",
     })
     setEditingTask(null)
     setIsDialogOpen(false)
@@ -125,11 +156,11 @@ export default function TasksPage() {
   const handleEdit = (task: Task) => {
     setEditingTask(task)
     setFormData({
-      title: task.title,
-      description: task.description,
-      category: task.category,
-      priority: task.priority,
-      dueDate: task.dueDate,
+      titulo: task.titulo,
+      descricao: task.descricao,
+      categoria: task.categoria,
+      prioridade: mapPriorityForFrontend(task.prioridade),
+      dataConclusao: task.dataConclusao,
     })
     setIsDialogOpen(true)
   }
@@ -139,19 +170,19 @@ export default function TasksPage() {
   }
 
   const toggleComplete = (id: number) => {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
+    setTasks(tasks.map((task) => (task.id === id ? { ...task, concluida: !task.concluida } : task)))
   }
 
   const filteredTasks = tasks.filter((task) => {
-    const categoryMatch = filterCategory === "todas" || task.category === filterCategory
+    const categoryMatch = filterCategory === "todas" || task.categoria === filterCategory
     const statusMatch =
       filterStatus === "todas" ||
-      (filterStatus === "concluidas" && task.completed) ||
-      (filterStatus === "pendentes" && !task.completed)
+      (filterStatus === "concluidas" && task.concluida) ||
+      (filterStatus === "pendentes" && !task.concluida)
     const searchMatch =
       searchQuery === "" ||
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchQuery.toLowerCase())
+      task.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.descricao.toLowerCase().includes(searchQuery.toLowerCase())
     return categoryMatch && statusMatch && searchMatch
   })
 
@@ -207,8 +238,8 @@ export default function TasksPage() {
                           <Label htmlFor="title">Título</Label>
                           <Input
                             id="title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            value={formData.titulo}
+                            onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                             required
                           />
                         </div>
@@ -216,8 +247,8 @@ export default function TasksPage() {
                           <Label htmlFor="description">Descrição</Label>
                           <Textarea
                             id="description"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            value={formData.descricao}
+                            onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                             rows={3}
                           />
                         </div>
@@ -225,8 +256,8 @@ export default function TasksPage() {
                           <div className="grid gap-2">
                             <Label htmlFor="category">Categoria</Label>
                             <Select
-                              value={formData.category}
-                              onValueChange={(value) => setFormData({ ...formData, category: value })}
+                              value={formData.categoria}
+                              onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                             >
                               <SelectTrigger id="category">
                                 <SelectValue />
@@ -243,9 +274,9 @@ export default function TasksPage() {
                           <div className="grid gap-2">
                             <Label htmlFor="priority">Prioridade</Label>
                             <Select
-                              value={formData.priority}
+                              value={formData.prioridade}
                               onValueChange={(value) =>
-                                setFormData({ ...formData, priority: value as "baixa" | "média" | "alta" })
+                                setFormData({ ...formData, prioridade: value as "baixa" | "média" | "alta" })
                               }
                             >
                               <SelectTrigger id="priority">
@@ -264,8 +295,8 @@ export default function TasksPage() {
                           <Input
                             id="dueDate"
                             type="date"
-                            value={formData.dueDate}
-                            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                            value={formData.dataConclusao}
+                            onChange={(e) => setFormData({ ...formData, dataConclusao: e.target.value })}
                             required
                           />
                         </div>
@@ -372,14 +403,14 @@ export default function TasksPage() {
                 </Card>
               ) : (
                 filteredTasks.map((task) => (
-                  <Card key={task.id} className={task.completed ? "opacity-60" : ""}>
+                  <Card key={task.id} className={task.concluida ? "opacity-60" : ""}>
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <button
                           onClick={() => toggleComplete(task.id)}
                           className="mt-1 shrink-0 hover:scale-110 transition-transform"
                         >
-                          {task.completed ? (
+                          {task.concluida ? (
                             <CheckCircle2 className="h-6 w-6 text-primary" />
                           ) : (
                             <Circle className="h-6 w-6 text-muted-foreground" />
@@ -389,10 +420,10 @@ export default function TasksPage() {
                           <div className="flex items-start justify-between gap-4 mb-2">
                             <h3
                               className={`text-lg font-semibold ${
-                                task.completed ? "line-through text-muted-foreground" : "text-foreground"
+                                task.concluida ? "line-through text-muted-foreground" : "text-foreground"
                               }`}
                             >
-                              {task.title}
+                              {task.titulo}
                             </h3>
                             <div className="flex gap-2 shrink-0">
                               <Button
@@ -413,18 +444,18 @@ export default function TasksPage() {
                               </Button>
                             </div>
                           </div>
-                          {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
+                          {task.descricao && <p className="text-sm text-muted-foreground mb-3">{task.descricao}</p>}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className={getCategoryColor(task.category)}>
-                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.category)} mr-1.5`} />
-                              {getCategoryName(task.category)}
+                            <Badge variant="outline" className={getCategoryColor(task.categoria)}>
+                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.categoria)} mr-1.5`} />
+                              {getCategoryName(task.categoria)}
                             </Badge>
-                            <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            <Badge variant="outline" className={getPriorityColor(mapPriorityForFrontend(task.prioridade))}>
+                              {mapPriorityForFrontend(task.prioridade).charAt(0).toUpperCase() + mapPriorityForFrontend(task.prioridade).slice(1)}
                             </Badge>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3.5 w-3.5" />
-                              {new Date(task.dueDate).toLocaleDateString("pt-BR")}
+                              {new Date(task.dataConclusao).toLocaleDateString("pt-BR")}
                             </div>
                           </div>
                         </div>

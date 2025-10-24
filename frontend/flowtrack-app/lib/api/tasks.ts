@@ -5,12 +5,12 @@ import { apiRequest } from "./config"
  */
 export interface Task {
   id: number
-  title: string
-  description: string
-  category: string
-  priority: "baixa" | "média" | "alta"
-  dueDate: string
-  completed: boolean
+  titulo: string
+  descricao: string
+  categoria: string
+  prioridade: number
+  dataConclusao: string
+  concluida: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -27,7 +27,8 @@ export interface Task {
  * ```
  */
 export async function getAllTasks(): Promise<Task[]> {
-  return apiRequest<Task[]>("/tasks")
+  const pageable = await apiRequest<{ content: Task[] }>("/tasks")
+  return pageable.content;
 }
 
 /**
@@ -62,7 +63,7 @@ export async function getTaskById(id: number): Promise<Task> {
  * ```
  */
 export async function createTask(task: Omit<Task, "id">): Promise<Task> {
-  return apiRequest<Task>("/tasks", {
+  return apiRequest<Task>("/tasks/add", {
     method: "POST",
     body: JSON.stringify(task),
   })
