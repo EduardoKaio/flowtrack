@@ -33,7 +33,7 @@ public class TaskController {
     })
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
-            @RequestParam String titulo,
+            @RequestParam(required = false) String titulo,
             @PageableDefault(size = 5, sort = "titulo", direction = Sort.Direction.ASC) Pageable pageable) {
 
         if (titulo != null && !titulo.isEmpty()) {
