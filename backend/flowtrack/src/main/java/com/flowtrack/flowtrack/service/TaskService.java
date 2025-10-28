@@ -42,11 +42,14 @@ public class TaskService {
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com ID: " + id));
 
-        Task updatedTask = taskMapper.taskDTOParaTask(taskDTO);
+        existingTask.setTitulo(taskDTO.getTitulo());
+        existingTask.setDescricao(taskDTO.getDescricao());
+        existingTask.setDataConclusao(taskDTO.getDataConclusao());
+        existingTask.setConcluida(taskDTO.isConcluida());
+        existingTask.setPrioridade(taskDTO.getPrioridade());
+        existingTask.setUsuario(taskDTO.getUsuario());
 
-        updatedTask.setId(existingTask.getId());
-
-        Task savedTask = taskRepository.save(updatedTask);
+        Task savedTask = taskRepository.save(existingTask);
 
         return taskMapper.taskParaTaskDTO(savedTask);
     }

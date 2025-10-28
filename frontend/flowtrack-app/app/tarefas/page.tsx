@@ -23,7 +23,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
-import { getAllTasks, createTask } from "@/lib/api/tasks"
+import { getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } from "@/lib/api/tasks"
 
 interface Task {
   id: number
@@ -32,7 +32,7 @@ interface Task {
   categoria: string
   prioridade: number
   dataConclusao: string
-  concluida: boolean  
+  concluida: boolean
 }
 
 const categories = [
@@ -46,26 +46,26 @@ const categories = [
 function mapPriorityForFrontend(priority: number): "baixa" | "média" | "alta" {
   switch (priority) {
     case 1:
-      return "baixa"
+      return "alta"
     case 2:
       return "média"
     case 3:
-      return "alta"
-    default:
       return "baixa"
+    default:
+      return "média"
   }
 }
 
 function mapPriorityForBackend(priority: "baixa" | "média" | "alta"): number {
   switch (priority) {
-    case "baixa":
+    case "alta":
       return 1
     case "média":
       return 2
-    case "alta":
+    case "baixa":
       return 3
     default:
-      return 1
+      return 2
   }
 }
 
@@ -79,13 +79,10 @@ export default function TasksPage() {
       try {
         setLoading(true)
         const data = await getAllTasks()
-        const mappedTasks = data.map((task: any) => ({
-        ...task,
-        prioridade: mapPriorityForFrontend(task.priority),
-        }))
-        console.log(mappedTasks)
-        
-        setTasks(mappedTasks)
+
+        console.log(data)
+
+        setTasks(data)
       } catch (err) {
         console.error("Erro ao carregar tarefas:", err)
         setError("Falha ao carregar tarefas")
@@ -94,7 +91,7 @@ export default function TasksPage() {
         setLoading(false)
       }
     }
-    
+
     loadTasks()
   }, [])
 
@@ -108,7 +105,7 @@ export default function TasksPage() {
     titulo: "",
     descricao: "",
     categoria: "trabalho",
-    prioridade: mapPriorityForFrontend(2),
+    prioridade: "média" as "baixa" | "média" | "alta",
     dataConclusao: "",
   })
 
@@ -120,57 +117,88 @@ export default function TasksPage() {
     }
   }, [])
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  try {
-    const newTask = await createTask({
-      titulo: formData.titulo,
-      descricao: formData.descricao,
-      categoria: formData.categoria,
-      prioridade: mapPriorityForBackend(formData.prioridade),
-      dataConclusao: formData.dataConclusao,
-      concluida: false
-    })
-    
-    setTasks([...tasks, newTask])
-    resetForm()
-  } catch (error) {
-    console.error("Erro ao criar tarefa:", error)
-    
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const newTask = await createTask({
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        categoria: formData.categoria,
+        prioridade: mapPriorityForBackend(formData.prioridade),
+        dataConclusao: formData.dataConclusao,
+        concluida: false
+      })
+
+      setTasks([...tasks, newTask])
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error)
+
+    }
   }
-}
 
   const resetForm = () => {
     setFormData({
       titulo: "",
       descricao: "",
       categoria: "trabalho",
-      prioridade: "média",
+      prioridade: "média" as "baixa" | "média" | "alta",
       dataConclusao: "",
     })
     setEditingTask(null)
     setIsDialogOpen(false)
   }
 
-  const handleEdit = (task: Task) => {
+  const startFormEdit = (task: Task) => {
     setEditingTask(task)
     setFormData({
       titulo: task.titulo,
       descricao: task.descricao,
-      categoria: task.categoria,
+      categoria: "trabalho",
       prioridade: mapPriorityForFrontend(task.prioridade),
       dataConclusao: task.dataConclusao,
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setTasks(tasks.filter((task) => task.id !== id))
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTask) return
+
+    try {
+      const payload = {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        categoria: formData.categoria,
+        prioridade: mapPriorityForBackend(formData.prioridade),
+        dataConclusao: formData.dataConclusao,
+      }
+
+      const updatedTask = await updateTask(editingTask.id, payload)
+      setTasks(tasks.map(t => t.id === editingTask.id ? updatedTask : t))
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao atualizar tarefa:", error)
+    }
   }
 
-  const toggleComplete = (id: number) => {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, concluida: !task.concluida } : task)))
+  const handleDelete = async (taskId: number) => {
+    try {
+      await deleteTask(taskId)
+      setTasks(tasks.filter(t => t.id !== taskId))
+    } catch (error) {
+      console.error("Erro ao deletar tarefa:", error)
+    }
+  }
+
+  const toggleComplete = async (id: number) => {
+    try {
+      await toggleTaskCompletion(id)
+      setTasks(tasks.map(t => t.id === id ? { ...t, concluida: !t.concluida } : t))
+    } catch (error) {
+      console.error("Erro ao deletar tarefa:", error)
+    }
   }
 
   const filteredTasks = tasks.filter((task) => {
@@ -226,7 +254,7 @@ export default function TasksPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={editingTask ? handleUpdate : handleSubmit}>
                       <DialogHeader>
                         <DialogTitle>{editingTask ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
                         <DialogDescription>
@@ -419,9 +447,8 @@ export default function TasksPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-4 mb-2">
                             <h3
-                              className={`text-lg font-semibold ${
-                                task.concluida ? "line-through text-muted-foreground" : "text-foreground"
-                              }`}
+                              className={`text-lg font-semibold ${task.concluida ? "line-through text-muted-foreground" : "text-foreground"
+                                }`}
                             >
                               {task.titulo}
                             </h3>
@@ -429,7 +456,7 @@ export default function TasksPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleEdit(task)}
+                                onClick={() => startFormEdit(task)}
                                 className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                               >
                                 <Edit className="h-4 w-4" />
