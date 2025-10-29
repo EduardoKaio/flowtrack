@@ -17,7 +17,7 @@ public class TaskDTO {
     private LocalDate dataConclusao;
     private boolean concluida;
     private Integer prioridade; // 1 (alta) 2 (média) 3 (baixa)
-    private User usuario;
+    private Long userId;
     //    private Category categoria;
 
 }

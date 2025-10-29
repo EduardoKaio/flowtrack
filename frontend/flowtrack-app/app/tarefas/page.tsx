@@ -23,7 +23,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
-import { getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion } from "@/lib/api/tasks"
+import { getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks } from "@/lib/api/tasks"
 
 interface Task {
   id: number
@@ -33,6 +33,7 @@ interface Task {
   prioridade: number
   dataConclusao: string
   concluida: boolean
+  userId?: number
 }
 
 const categories = [
@@ -80,8 +81,6 @@ export default function TasksPage() {
         setLoading(true)
         const data = await getAllTasks()
 
-        console.log(data)
-
         setTasks(data)
       } catch (err) {
         console.error("Erro ao carregar tarefas:", err)
@@ -121,20 +120,20 @@ export default function TasksPage() {
     e.preventDefault()
 
     try {
+      
       const newTask = await createTask({
         titulo: formData.titulo,
         descricao: formData.descricao,
         categoria: formData.categoria,
         prioridade: mapPriorityForBackend(formData.prioridade),
         dataConclusao: formData.dataConclusao,
-        concluida: false
+        concluida: false,
       })
 
       setTasks([...tasks, newTask])
       resetForm()
     } catch (error) {
       console.error("Erro ao criar tarefa:", error)
-
     }
   }
 
@@ -201,17 +200,38 @@ export default function TasksPage() {
     }
   }
 
+
+  // Busca no backend ao digitar no campo de pesquisa
+  useEffect(() => {
+    async function fetchFilteredTasks() {
+      setLoading(true)
+      try {
+        if (searchQuery.trim() === "") {
+          // Se o campo está vazio, carregue todas as tarefas normalmente
+          const data = await getAllTasks()
+          setTasks(data)
+        } else {
+          // Busca filtrada no backend
+          const data = await searchTasks(searchQuery)
+          setTasks(data)
+        }
+      } catch (err) {
+        setError("Erro ao buscar tarefas")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchFilteredTasks()
+  }, [searchQuery])
+
+  // Filtro local agora só para categoria e status
   const filteredTasks = tasks.filter((task) => {
     const categoryMatch = filterCategory === "todas" || task.categoria === filterCategory
     const statusMatch =
       filterStatus === "todas" ||
       (filterStatus === "concluidas" && task.concluida) ||
       (filterStatus === "pendentes" && !task.concluida)
-    const searchMatch =
-      searchQuery === "" ||
-      task.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.descricao.toLowerCase().includes(searchQuery.toLowerCase())
-    return categoryMatch && statusMatch && searchMatch
+    return categoryMatch && statusMatch
   })
 
   const getCategoryColor = (categoryId: string) => {

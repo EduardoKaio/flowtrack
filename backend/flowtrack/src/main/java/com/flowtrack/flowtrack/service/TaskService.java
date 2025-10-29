@@ -9,8 +9,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public class TaskService {
     private final TaskRepository taskRepository;
@@ -47,7 +45,6 @@ public class TaskService {
         existingTask.setDataConclusao(taskDTO.getDataConclusao());
         existingTask.setConcluida(taskDTO.isConcluida());
         existingTask.setPrioridade(taskDTO.getPrioridade());
-        existingTask.setUsuario(taskDTO.getUsuario());
 
         Task savedTask = taskRepository.save(existingTask);
 
@@ -61,9 +58,8 @@ public class TaskService {
     }
 
 
-    public Page<TaskDTO> getTasksByTitle(String titulo, Pageable pageable) {
-        String tituloLike = "%" + titulo.toLowerCase() + "%";
-        return taskRepository.findByTitle(tituloLike, pageable)
+    public Page<TaskDTO> getTasksByTitleOrDescription(String titulo, String descricao, Pageable pageable) {
+        return taskRepository.findByTitleOrDescription(titulo, descricao, pageable)
                 .map(taskMapper::taskParaTaskDTO);
     }
 }

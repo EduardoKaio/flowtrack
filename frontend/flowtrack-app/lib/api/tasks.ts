@@ -11,6 +11,7 @@ export interface Task {
   prioridade: number
   dataConclusao: string
   concluida: boolean
+  userId?: number // Adicionado para permitir associação com usuário
   createdAt?: string
   updatedAt?: string
 }
@@ -62,7 +63,7 @@ export async function getTaskById(id: number): Promise<Task> {
  * })
  * ```
  */
-export async function createTask(task: Omit<Task, "id">): Promise<Task> {
+export async function createTask(task: Omit<Task, "id"> & { userId?: number }): Promise<Task> {
   return apiRequest<Task>("/tasks/add", {
     method: "POST",
     body: JSON.stringify(task),
@@ -119,4 +120,14 @@ export async function toggleTaskCompletion(id: number): Promise<Task> {
   return apiRequest<Task>(`/tasks/${id}/toggle`, {
     method: "PATCH",
   })
+}
+
+export async function searchTasks(query: string): Promise<Task[]> {
+  // Usa o mesmo valor para título e descrição para busca simples
+  const params = new URLSearchParams({
+    titulo: query,
+    descricao: query,
+  });
+  const pageable = await apiRequest<{ content: Task[] }>(`/tasks/search?${params.toString()}`);
+  return pageable.content;
 }

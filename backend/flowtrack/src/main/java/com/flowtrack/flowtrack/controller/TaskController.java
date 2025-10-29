@@ -33,14 +33,23 @@ public class TaskController {
     })
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
-            @RequestParam(required = false) String titulo,
-            @PageableDefault(size = 5, sort = "titulo", direction = Sort.Direction.ASC) Pageable pageable) {
-
-        if (titulo != null && !titulo.isEmpty()) {
-            return ResponseEntity.ok(taskService.getTasksByTitle(titulo, pageable));
-        }
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
 
         return ResponseEntity.ok(taskService.getAllTasks(pageable));
+    }
+
+    @Operation(summary = "Pesquisar tarefas", description = "Retorna uma página de tarefas filtradas por título ou descrição.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Página de tarefas retornada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Nenhuma Tarefa encontrada")
+    })
+    @GetMapping("/search")
+    public ResponseEntity<Page<TaskDTO>> searchTasks(
+            @RequestParam(required = false, defaultValue = "") String titulo,
+            @RequestParam(required = false, defaultValue = "") String descricao,
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(taskService.getTasksByTitleOrDescription(titulo, descricao, pageable));
     }
 
     @Operation(summary = "Obter tarefa por ID", description = "Retorna uma tarefa pelo seu ID.")

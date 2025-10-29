@@ -30,7 +30,7 @@ public class Task {
 //    private Category categoria;
 
     // solucao temporaria aguardando implementacao de autenticacao
-    @ManyToOne(optional = true)
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = true)
     private User usuario;
 }
