@@ -30,7 +30,7 @@ public class TaskController {
     @Operation(summary = "Listar tarefas", description = "Retorna uma página de tarefas. Se o parâmetro 'titulo' for informado, filtra pelo título.")
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
-           @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+           @ParameterObject Pageable pageable) {
 
         return ResponseEntity.ok(taskService.getAllTasks(pageable));
     }
@@ -44,7 +44,7 @@ public class TaskController {
     public ResponseEntity<Page<TaskDTO>> searchTasks(
             @RequestParam(required = false, defaultValue = "") String titulo,
             @RequestParam(required = false, defaultValue = "") String descricao,
-            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         return ResponseEntity.ok(taskService.getTasksByTitleOrDescription(titulo, descricao, pageable));
     }

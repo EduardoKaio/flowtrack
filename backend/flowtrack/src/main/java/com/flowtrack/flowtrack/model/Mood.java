@@ -23,6 +23,7 @@ public class Mood {
     private Long id;
 
     private Moods humor;
+    private String emoji;
 
     @Min(1)
     @Max(10)

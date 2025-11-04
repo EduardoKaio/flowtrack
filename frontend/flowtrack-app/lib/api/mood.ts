@@ -5,14 +5,21 @@ import { apiRequest } from "./config"
  */
 export interface MoodEntry {
   id: number
-  mood: string
+  humor: string
   emoji: string
-  energy: number
-  stress: number
-  notes: string
-  date: string
+  energia: number
+  estresse: number
+  notas: string
   userId?: number
-  createdAt?: string
+  dataCriacao: string
+}
+
+export type CreateMoodEntryDTO = {
+  humor: number
+  emoji: string
+  energia: number
+  estresse: number
+  notas: string
 }
 
 /**
@@ -27,7 +34,8 @@ export interface MoodEntry {
  * ```
  */
 export async function getAllMoodEntries(): Promise<MoodEntry[]> {
-  return apiRequest<MoodEntry[]>("/mood")
+  const pageable = await apiRequest<{ content: MoodEntry[] }>("/mood")
+  return pageable.content;
 }
 
 /**
@@ -41,7 +49,8 @@ export async function getAllMoodEntries(): Promise<MoodEntry[]> {
  * ```
  */
 export async function getMoodEntriesByDateRange(startDate: string, endDate: string): Promise<MoodEntry[]> {
-  return apiRequest<MoodEntry[]>(`/mood?startDate=${startDate}&endDate=${endDate}`)
+  const pageable = await apiRequest<{ content: MoodEntry[] }>(`/mood/search?startDate=${startDate}&endDate=${endDate}`)
+  return pageable.content;
 }
 
 /**
@@ -75,7 +84,7 @@ export async function getMoodEntryById(id: number): Promise<MoodEntry> {
  * })
  * ```
  */
-export async function createMoodEntry(entry: Omit<MoodEntry, "id" | "createdAt">): Promise<MoodEntry> {
+export async function createMoodEntry(entry: CreateMoodEntryDTO): Promise<MoodEntry> {
   return apiRequest<MoodEntry>("/mood", {
     method: "POST",
     body: JSON.stringify(entry),

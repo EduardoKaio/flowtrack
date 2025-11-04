@@ -32,7 +32,7 @@ public class MoodController {
     @Operation(summary = "Busca todos os registros de humor", description = "Retorna uma lista paginada com todos os registros de humor")
     @GetMapping
     public ResponseEntity<Page<MoodDTO>> findAllMoods(
-            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+            @ParameterObject Pageable pageable) {
 
         return ResponseEntity.ok(moodService.findAllMoods(pageable));
     }
@@ -44,8 +44,7 @@ public class MoodController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @Parameter(description = "Data de fim do intervalo (formato AAAA-MM-DD)", example = "2023-01-31")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC)
-            Pageable pageable) {
+            @ParameterObject Pageable pageable) {
 
         if (startDate != null && endDate != null) {
             return ResponseEntity.ok(moodService.filterMoodsByDate(startDate, endDate, pageable));

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class MoodService {
@@ -54,6 +53,7 @@ public class MoodService {
                 .orElseThrow(() -> new ResourceNotFoundException("Mood not found with id: " + id));
 
         existingMood.setHumor(moodDTO.getHumor());
+        existingMood.setEmoji(moodDTO.getEmoji());
         existingMood.setEnergia(moodDTO.getEnergia());
         existingMood.setEstresse(moodDTO.getEstresse());
         existingMood.setNotas(moodDTO.getNotas());
