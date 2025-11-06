@@ -1,3 +1,4 @@
+import { getPage, getPageByDateRange } from "../page"
 import { apiRequest } from "./config"
 
 /**
@@ -33,9 +34,12 @@ export type CreateMoodEntryDTO = {
  * setEntries(entries)
  * ```
  */
-export async function getAllMoodEntries(): Promise<MoodEntry[]> {
-  const pageable = await apiRequest<{ content: MoodEntry[] }>("/mood")
-  return pageable.content;
+export async function getAllMoodEntries(params?: {
+  page?: number
+  size?: number
+  sort?: string
+}) {
+  return getPage<MoodEntry>("/mood", params)
 }
 
 /**
@@ -48,9 +52,12 @@ export async function getAllMoodEntries(): Promise<MoodEntry[]> {
  * const entries = await getMoodEntriesByDateRange("2025-10-01", "2025-10-31")
  * ```
  */
-export async function getMoodEntriesByDateRange(startDate: string, endDate: string): Promise<MoodEntry[]> {
-  const pageable = await apiRequest<{ content: MoodEntry[] }>(`/mood/search?startDate=${startDate}&endDate=${endDate}`)
-  return pageable.content;
+export async function getMoodEntriesByDateRange(
+  startDate: string,
+  endDate: string,
+  params?: { page?: number; size?: number; sort?: string }
+) {
+  return getPageByDateRange<MoodEntry>("/mood", startDate, endDate, params)
 }
 
 /**
@@ -103,7 +110,7 @@ export async function createMoodEntry(entry: CreateMoodEntryDTO): Promise<MoodEn
  * })
  * ```
  */
-export async function updateMoodEntry(id: number, entry: Partial<MoodEntry>): Promise<MoodEntry> {
+export async function updateMoodEntry(id: number, entry: Partial<CreateMoodEntryDTO>): Promise<MoodEntry> {
   return apiRequest<MoodEntry>(`/mood/${id}`, {
     method: "PUT",
     body: JSON.stringify(entry),

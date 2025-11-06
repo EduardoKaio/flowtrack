@@ -24,15 +24,8 @@ public class Mood {
 
     private Moods humor;
     private String emoji;
-
-    @Min(1)
-    @Max(10)
     private Integer energia;
-
-    @Min(1)
-    @Max(10)
     private Integer estresse;
-
     private String notas;
     private LocalDateTime dataCriacao;
 

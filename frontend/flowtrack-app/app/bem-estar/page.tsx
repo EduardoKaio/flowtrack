@@ -18,8 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Heart, Plus, TrendingUp, Calendar } from "lucide-react"
-import { MoodEntry, createMoodEntry, getAllMoodEntries, getMoodEntriesByDateRange, getMoodEntryById } from "@/lib/api/mood"
+import { Heart, Plus, TrendingUp, Calendar, Edit, Trash2 } from "lucide-react"
+import { MoodEntry, createMoodEntry, deleteMoodEntry, getAllMoodEntries, getMoodEntriesByDateRange, getMoodEntryById, updateMoodEntry } from "@/lib/api/mood"
 
 const moodOptions = [
   { value: "excelente", label: "Excelente", emoji: "😄", color: "bg-green-500" },
@@ -48,18 +48,36 @@ const selfCareActivities = [
 
 export default function WellBeingPage() {
   const [entries, setEntries] = useState<MoodEntry[]>([])
+  const [page, setPage] = useState(0)
+  const [size, setSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [loadingList, setLoadingList] = useState(false)
+
+  const fetchList = async (pageToLoad: number = page, sizeToLoad: number = size) => {
+    const p = Math.max(0, pageToLoad)
+    setLoadingList(true)
+    try {
+      let resp
+      if (startDate && endDate) {
+        resp = await getMoodEntriesByDateRange(startDate, endDate, { page: p, size: sizeToLoad })
+      } else {
+        resp = await getAllMoodEntries({ page: p, size: sizeToLoad })
+      }
+      setEntries(resp.content)
+      setPage(resp.number)
+      setSize(resp.size)
+      setTotalPages(resp.totalPages)
+      setTotalElements(resp.totalElements)
+    } catch (err) {
+      console.error("Failed to fetch paginated mood entries:", err)
+    } finally {
+      setLoadingList(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchEntries = async () => {
-      try {
-        const moodEntries = await getAllMoodEntries()
-        console.log(moodEntries)
-        setEntries(moodEntries)
-      } catch (error) {
-        console.error("Failed to fetch mood entries:", error)
-      }
-    }
-    fetchEntries()
+    fetchList(0)
   }, [])
 
   const [startDate, setStartDate] = useState<string>("")
@@ -71,28 +89,13 @@ export default function WellBeingPage() {
       console.warn("Data inicial não pode ser maior que a final")
       return
     }
-
-    try {
-      setLoadingRange(true)
-      const data = await getMoodEntriesByDateRange(startDate, endDate)
-      console.log(data)
-      setEntries(data)
-    } catch (error) {
-      console.error("Failed to fetch mood entries by range:", error)
-    } finally {
-      setLoadingRange(false)
-    }
+    await fetchList(0)
   }
 
   const clearDateFilter = async () => {
     setStartDate("")
     setEndDate("")
-    try {
-      const moodEntries = await getAllMoodEntries()
-      setEntries(moodEntries)
-    } catch (error) {
-      console.error("Failed to reload all mood entries:", error)
-    }
+    await fetchList(0)
   }
 
   const [entryId, setEntryId] = useState<string>("")
@@ -136,6 +139,19 @@ export default function WellBeingPage() {
     }
   }, [])
 
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const handleOpenEdit = (entry: MoodEntry) => {
+    setEditingId(entry.id)
+    setFormData({
+      humor: entry.humor.toLowerCase(), 
+      emoji: entry.emoji,
+      energia: entry.energia,
+      estresse: entry.estresse,
+      notas: entry.notas || "",
+    })
+    setIsDialogOpen(true)
+  }
+
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,14 +169,28 @@ export default function WellBeingPage() {
         notas: formData.notas,
       }
 
-      const created = await createMoodEntry(payload)
-      setEntries((prev) => [created, ...prev])
+      if (editingId) {
+        await updateMoodEntry(editingId, payload)
+      } else {
+        await createMoodEntry(payload)
+      }
+
+      await fetchList(0)
       resetForm()
     } catch (error) {
       console.error("Failed to create mood entry:", error)
       setCreateError("Não foi possível salvar. Tente novamente.")
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMoodEntry(id)
+      await fetchList(0)
+    } catch (error) {
+      console.error("Erro ao deletar entrada de humor:", error)
     }
   }
 
@@ -172,6 +202,7 @@ export default function WellBeingPage() {
       estresse: 5,
       notas: "",
     })
+    setEditingId(null)
     setIsDialogOpen(false)
   }
 
@@ -233,8 +264,12 @@ export default function WellBeingPage() {
                 <DialogContent className="sm:max-w-[500px]">
                   <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                      <DialogTitle>Como você está se sentindo?</DialogTitle>
-                      <DialogDescription>Registre seu humor e bem-estar do momento</DialogDescription>
+                      <DialogTitle>
+                        {editingId ? "Editar registro de humor" : "Como você está se sentindo?"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingId ? "Atualize os dados do seu registro" : "Registre seu humor e bem-estar do momento"}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                       <div className="grid gap-3">
@@ -313,11 +348,11 @@ export default function WellBeingPage() {
                     )}
 
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={resetForm}>
+                       <Button type="button" variant="outline" onClick={resetForm}>
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={creating}>
-                        {creating ? "Salvando..." : "Salvar"}
+                        {creating ? "Salvando..." : editingId ? "Atualizar" : "Salvar"}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -325,36 +360,6 @@ export default function WellBeingPage() {
               </Dialog>
             }
           />
-          <div className="flex flex-wrap items-end gap-3 mb-6">
-            <div className="flex flex-col">
-              <Label htmlFor="startDate">Início</Label>
-              <input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border border-border rounded-md px-3 py-2 bg-background text-foreground"
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label htmlFor="endDate">Fim</Label>
-              <input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="border border-border rounded-md px-3 py-2 bg-background text-foreground"
-              />
-            </div>
-
-            <Button onClick={fetchEntriesByRange} disabled={!startDate || !endDate || loadingRange}>
-              Filtrar
-            </Button>
-            <Button variant="outline" onClick={clearDateFilter} disabled={loadingRange}>
-              Limpar
-            </Button>
-          </div>
 
           <div className="grid gap-6 lg:grid-cols-3 mb-6">
             <Card>
@@ -428,6 +433,24 @@ export default function WellBeingPage() {
                                 </div>
                               </div>
                             </div>
+                            <div className="flex gap-2 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenEdit(entry)}
+                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(entry.id)}
+                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4 mb-3">
                             <div>
@@ -458,6 +481,51 @@ export default function WellBeingPage() {
                           {entry.notas && <p className="text-sm text-muted-foreground italic">{entry.notas}</p>}
                         </div>
                       ))}
+                      {/* Paginação */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
+                        <div className="text-sm text-muted-foreground">
+                          {totalElements > 0
+                            ? `Mostrando ${page * size + 1}–${Math.min(page * size + entries.length, totalElements)} de ${totalElements}`
+                            : null}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="border border-border rounded-md px-2 py-1 bg-background text-foreground"
+                            value={size}
+                            onChange={(e) => {
+                              const newSize = Number(e.target.value)
+                              setPage(0)
+                              setSize(newSize)
+                              fetchList(0, newSize)
+                            }}
+                            disabled={loadingList}
+                          >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                          </select>
+
+                          <Button
+                            variant="outline"
+                            onClick={() => fetchList(page - 1)}
+                            disabled={loadingList || page <= 0}
+                          >
+                            Anterior
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {page + 1} / {Math.max(totalPages, 1)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            onClick={() => fetchList(page + 1)}
+                            disabled={loadingList || page + 1 >= totalPages}
+                          >
+                            Próxima
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>

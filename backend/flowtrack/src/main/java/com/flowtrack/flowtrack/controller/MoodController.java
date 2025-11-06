@@ -7,11 +7,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,7 +66,7 @@ public class MoodController {
             @ApiResponse(responseCode = "201", description = "Registro de humor criado com sucesso")
     })
     @PostMapping
-    public ResponseEntity<MoodDTO> createMood(@RequestBody MoodDTO moodDTO) {
+    public ResponseEntity<MoodDTO> createMood(@Valid @RequestBody MoodDTO moodDTO) {
         return new ResponseEntity<>(moodService.createMood(moodDTO), HttpStatus.CREATED);
     }
 
@@ -77,7 +76,7 @@ public class MoodController {
             @ApiResponse(responseCode = "404", description = "Registro de humor não encontrado para o ID fornecido")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<MoodDTO> updateMood(@PathVariable Long id, @RequestBody MoodDTO moodDTO) {
+    public ResponseEntity<MoodDTO> updateMood(@PathVariable Long id, @Valid @RequestBody MoodDTO moodDTO) {
         return ResponseEntity.ok(moodService.updateMood(id, moodDTO));
     }
 
