@@ -8,12 +8,21 @@ export interface Task {
   titulo: string
   descricao: string
   categoria: string
+  prioridade: string
+  dataConclusao: string
+  concluida: boolean
+  userId?: number 
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ResponseTaskDTO {
+  titulo: string
+  descricao: string
+  categoria: string
   prioridade: number
   dataConclusao: string
   concluida: boolean
-  userId?: number // Adicionado para permitir associação com usuário
-  createdAt?: string
-  updatedAt?: string
 }
 
 /**
@@ -63,7 +72,7 @@ export async function getTaskById(id: number): Promise<Task> {
  * })
  * ```
  */
-export async function createTask(task: Omit<Task, "id"> & { userId?: number }): Promise<Task> {
+export async function createTask(task: ResponseTaskDTO): Promise<Task> {
   return apiRequest<Task>("/tasks/add", {
     method: "POST",
     body: JSON.stringify(task),
@@ -83,7 +92,7 @@ export async function createTask(task: Omit<Task, "id"> & { userId?: number }): 
  * })
  * ```
  */
-export async function updateTask(id: number, task: Partial<Task>): Promise<Task> {
+export async function updateTask(id: number, task: Partial<ResponseTaskDTO>): Promise<Task> {
   return apiRequest<Task>(`/tasks/${id}`, {
     method: "PUT",
     body: JSON.stringify(task),
