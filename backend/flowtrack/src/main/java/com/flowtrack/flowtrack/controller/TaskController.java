@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -27,13 +28,9 @@ public class TaskController {
     }
 
     @Operation(summary = "Listar tarefas", description = "Retorna uma página de tarefas. Se o parâmetro 'titulo' for informado, filtra pelo título.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Página de tarefas retornada com sucesso",
-                    content = @Content(mediaType = "application/json"))
-    })
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
-            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+            @ParameterObject Pageable pageable) {
 
         return ResponseEntity.ok(taskService.getAllTasks(pageable));
     }
@@ -47,7 +44,7 @@ public class TaskController {
     public ResponseEntity<Page<TaskDTO>> searchTasks(
             @RequestParam(required = false, defaultValue = "") String titulo,
             @RequestParam(required = false, defaultValue = "") String descricao,
-            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         return ResponseEntity.ok(taskService.getTasksByTitleOrDescription(titulo, descricao, pageable));
     }
@@ -67,7 +64,7 @@ public class TaskController {
             @ApiResponse(responseCode = "201", description = "Tarefa criada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Requisição inválida")
     })
-    @PostMapping("/add")
+    @PostMapping
     public ResponseEntity<TaskDTO> createTask(@RequestBody TaskDTO taskDTO) {
         return new ResponseEntity<TaskDTO>(taskService.createTask(taskDTO), HttpStatus.CREATED);
     }

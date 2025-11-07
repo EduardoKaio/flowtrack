@@ -42,32 +42,61 @@ const PRIORITY_ID_MAP: Record<string, number> = {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [size, setSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadTasks() {
-      try {
-        setLoading(true)
-        const data = await getAllTasks()
+  const fetchList = async (pageLoad: number = page, sizeLoad: number = size) => {
+    const p = Math.max(0, pageLoad)
+    setLoading(true)
 
-        setTasks(data)
-      } catch (err) {
-        console.error("Erro ao carregar tarefas:", err)
-        setError("Falha ao carregar tarefas")
-        // Fallback para dados mockados se necessário
-      } finally {
-        setLoading(false)
+    try {
+      let resp
+      if (searchQuery) {
+        resp = await searchTasks(searchQuery, { page: p, size: sizeLoad })
+      } else {
+        resp = await getAllTasks({ page: p, size: sizeLoad })
       }
+
+      setTasks(resp.content)
+      setPage(resp.number)
+      setSize(resp.size)
+      setTotalPages(resp.totalPages)
+      setTotalElements(resp.totalElements)
+    } catch (err) {
+      console.error("Erro ao carregar tarefas:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchList(0)
+  }, [])
+
+  const fetchFilteredTasks = async () => {
+    if (!searchQuery) return
+    if (searchQuery.trim() === "") {
+      fetchList(0)
+      return
     }
 
-    loadTasks()
-  }, [])
+    await fetchList(0)
+  }
+
+  const clearFilter = async () => {
+    setSearchQuery("")
+
+    await fetchList(0)
+  }
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>("todas")
   const [filterStatus, setFilterStatus] = useState<string>("todas")
-  const [searchQuery, setSearchQuery] = useState<string>("")
 
   const [formData, setFormData] = useState({
     titulo: "",
@@ -89,7 +118,7 @@ export default function TasksPage() {
     e.preventDefault()
 
     try {
-      
+
       const newTask = await createTask({
         titulo: formData.titulo,
         descricao: formData.descricao,
@@ -168,30 +197,6 @@ export default function TasksPage() {
       console.error("Erro ao deletar tarefa:", error)
     }
   }
-
-
-  // Busca no backend ao digitar no campo de pesquisa
-  useEffect(() => {
-    async function fetchFilteredTasks() {
-      setLoading(true)
-      try {
-        if (searchQuery.trim() === "") {
-          // Se o campo está vazio, carregue todas as tarefas normalmente
-          const data = await getAllTasks()
-          setTasks(data)
-        } else {
-          // Busca filtrada no backend
-          const data = await searchTasks(searchQuery)
-          setTasks(data)
-        }
-      } catch (err) {
-        setError("Erro ao buscar tarefas")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchFilteredTasks()
-  }, [searchQuery])
 
   // Filtro local agora só para categoria e status
   const filteredTasks = tasks.filter((task) => {
@@ -293,7 +298,7 @@ export default function TasksPage() {
                             <Select
                               value={formData.prioridade}
                               onValueChange={(value) =>
-                                setFormData({ ...formData, prioridade: value})
+                                setFormData({ ...formData, prioridade: value })
                               }
                             >
                               <SelectTrigger id="priority">
@@ -480,6 +485,51 @@ export default function TasksPage() {
                   </Card>
                 ))
               )}
+            </div>
+            {/* Paginação */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
+              <div className="text-sm text-muted-foreground">
+                {totalElements > 0
+                  ? `Mostrando ${page * size + 1}–${Math.min(page * size + tasks.length, totalElements)} de ${totalElements}`
+                  : null}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  className="border border-border rounded-md px-2 py-1 bg-background text-foreground"
+                  value={size}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value)
+                    setPage(0)
+                    setSize(newSize)
+                    fetchList(0, newSize)
+                  }}
+                  disabled={loading}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+
+                <Button
+                  variant="outline"
+                  onClick={() => fetchList(page - 1)}
+                  disabled={loading || page <= 0}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {page + 1} / {Math.max(totalPages, 1)}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => fetchList(page + 1)}
+                  disabled={loading || page + 1 >= totalPages}
+                >
+                  Próxima
+                </Button>
+              </div>
             </div>
           </div>
         </div>
