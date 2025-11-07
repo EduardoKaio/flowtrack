@@ -143,7 +143,7 @@ export default function WellBeingPage() {
   const handleOpenEdit = (entry: MoodEntry) => {
     setEditingId(entry.id)
     setFormData({
-      humor: entry.humor.toLowerCase(), 
+      humor: entry.humor.toLowerCase(),
       emoji: entry.emoji,
       energia: entry.energia,
       estresse: entry.estresse,
@@ -348,7 +348,7 @@ export default function WellBeingPage() {
                     )}
 
                     <DialogFooter>
-                       <Button type="button" variant="outline" onClick={resetForm}>
+                      <Button type="button" variant="outline" onClick={resetForm}>
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={creating}>
@@ -482,49 +482,44 @@ export default function WellBeingPage() {
                         </div>
                       ))}
                       {/* Paginação */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
-                        <div className="text-sm text-muted-foreground">
-                          {totalElements > 0
-                            ? `Mostrando ${page * size + 1}–${Math.min(page * size + entries.length, totalElements)} de ${totalElements}`
-                            : null}
-                        </div>
+                      <div className="flex justify-center items-center gap-2 pt-4 border-t border-border">
 
-                        <div className="flex items-center gap-2">
-                          <select
-                            className="border border-border rounded-md px-2 py-1 bg-background text-foreground"
-                            value={size}
-                            onChange={(e) => {
-                              const newSize = Number(e.target.value)
-                              setPage(0)
-                              setSize(newSize)
-                              fetchList(0, newSize)
-                            }}
-                            disabled={loadingList}
-                          >
-                            <option value={5}>5</option>
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                          </select>
+                        <Button
+                          variant="outline"
+                          onClick={() => fetchList(page - 1, size)}
+                          disabled={loadingList || page <= 0}
+                        >
+                          Anterior
+                        </Button>
 
-                          <Button
-                            variant="outline"
-                            onClick={() => fetchList(page - 1)}
-                            disabled={loadingList || page <= 0}
-                          >
-                            Anterior
-                          </Button>
-                          <span className="text-sm text-muted-foreground">
-                            {page + 1} / {Math.max(totalPages, 1)}
-                          </span>
-                          <Button
-                            variant="outline"
-                            onClick={() => fetchList(page + 1)}
-                            disabled={loadingList || page + 1 >= totalPages}
-                          >
-                            Próxima
-                          </Button>
-                        </div>
+                        {totalPages > 0 && (() => {
+                          const windowSize = 5
+                          const start = Math.max(0, Math.min(page - Math.floor(windowSize / 2), Math.max(0, totalPages - windowSize)))
+                          const end = Math.min(totalPages, start + windowSize)
+                          const buttons = []
+                          for (let i = start; i < end; i++) {
+                            buttons.push(
+                              <Button
+                                key={i}
+                                variant={i === page ? "default" : "outline"}
+                                className={i === page ? "border-primary" : ""}
+                                onClick={() => fetchList(i, size)}
+                                disabled={loadingList}
+                              >
+                                {i + 1}
+                              </Button>
+                            )
+                          }
+                          return buttons
+                        })()}
+
+                        <Button
+                          variant="outline"
+                          onClick={() => fetchList(page + 1, size)}
+                          disabled={loadingList || page + 1 >= totalPages}
+                        >
+                          Próximo
+                        </Button>
                       </div>
                     </div>
                   )}
