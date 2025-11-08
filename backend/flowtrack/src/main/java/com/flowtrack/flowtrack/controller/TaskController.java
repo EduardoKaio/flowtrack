@@ -31,7 +31,6 @@ public class TaskController {
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
            @ParameterObject Pageable pageable) {
-
         return ResponseEntity.ok(taskService.getAllTasks(pageable));
     }
 
@@ -64,7 +63,7 @@ public class TaskController {
             @ApiResponse(responseCode = "201", description = "Tarefa criada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Requisição inválida")
     })
-    @PostMapping("/add")
+    @PostMapping
     public ResponseEntity<TaskDTO> createTask(@RequestBody TaskDTO taskDTO) {
         return new ResponseEntity<TaskDTO>(taskService.createTask(taskDTO), HttpStatus.CREATED);
     }

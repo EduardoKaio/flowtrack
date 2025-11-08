@@ -41,3 +41,18 @@ export async function getPageByDateRange<T>(
   })
   return apiRequest<Page<T>>(`${endpoint}/search?${qs.toString()}`)
 }
+
+export async function getTasksByQuery<T>(
+    endpoint: string,
+    query: string,
+    params?: { page?: number; size?: number; sort?: string }
+): Promise<Page<T>> {
+    const { page = 0, size = 10, sort = "id,desc" } = params ?? {}
+    const qs = new URLSearchParams({
+        query,
+        page: String(page),
+        size: String(size),
+        sort,
+    })
+    return apiRequest<Page<T>>(`${endpoint}/search?${qs.toString()}`)
+}
