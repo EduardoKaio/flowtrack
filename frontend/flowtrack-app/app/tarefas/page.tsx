@@ -23,18 +23,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
-import { getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks } from "@/lib/api/tasks"
-
-interface Task {
-  id: number
-  titulo: string
-  descricao: string
-  categoria: string
-  prioridade: number
-  dataConclusao: string
-  concluida: boolean
-  userId?: number
-}
+import { Task, getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks } from "@/lib/api/tasks"
 
 const categories = [
   { id: "trabalho", name: "Trabalho", color: "bg-blue-500" },
@@ -44,67 +33,76 @@ const categories = [
   { id: "pessoal", name: "Pessoal", color: "bg-pink-500" },
 ]
 
-function mapPriorityForFrontend(priority: number): "baixa" | "média" | "alta" {
-  switch (priority) {
-    case 1:
-      return "alta"
-    case 2:
-      return "média"
-    case 3:
-      return "baixa"
-    default:
-      return "média"
-  }
-}
-
-function mapPriorityForBackend(priority: "baixa" | "média" | "alta"): number {
-  switch (priority) {
-    case "alta":
-      return 1
-    case "média":
-      return 2
-    case "baixa":
-      return 3
-    default:
-      return 2
-  }
+const PRIORITY_ID_MAP: Record<string, number> = {
+  "baixa": 0,
+  "media": 1,
+  "alta": 2
 }
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [size, setSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadTasks() {
-      try {
-        setLoading(true)
-        const data = await getAllTasks()
+  const fetchList = async (pageLoad: number = page, sizeLoad: number = size) => {
+    const p = Math.max(0, pageLoad)
+    setLoading(true)
 
-        setTasks(data)
-      } catch (err) {
-        console.error("Erro ao carregar tarefas:", err)
-        setError("Falha ao carregar tarefas")
-        // Fallback para dados mockados se necessário
-      } finally {
-        setLoading(false)
+    try {
+      let resp
+      if (searchQuery) {
+        resp = await searchTasks(searchQuery, { page: p, size: sizeLoad })
+      } else {
+        resp = await getAllTasks({ page: p, size: sizeLoad })
       }
+
+      setTasks(resp.content)
+      setPage(resp.number)
+      setSize(resp.size)
+      setTotalPages(resp.totalPages)
+      setTotalElements(resp.totalElements)
+    } catch (err) {
+      console.error("Erro ao carregar tarefas:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchList(0)
+  }, [])
+
+  const fetchFilteredTasks = async () => {
+    if (!searchQuery) return
+    if (searchQuery.trim() === "") {
+      fetchList(0)
+      return
     }
 
-    loadTasks()
-  }, [])
+    await fetchList(0)
+  }
+
+  const clearFilter = async () => {
+    setSearchQuery("")
+
+    await fetchList(0)
+  }
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>("todas")
   const [filterStatus, setFilterStatus] = useState<string>("todas")
-  const [searchQuery, setSearchQuery] = useState<string>("")
 
   const [formData, setFormData] = useState({
     titulo: "",
     descricao: "",
     categoria: "trabalho",
-    prioridade: "média" as "baixa" | "média" | "alta",
+    prioridade: "media",
     dataConclusao: "",
   })
 
@@ -120,12 +118,12 @@ export default function TasksPage() {
     e.preventDefault()
 
     try {
-      
+
       const newTask = await createTask({
         titulo: formData.titulo,
         descricao: formData.descricao,
-        categoria: formData.categoria,
-        prioridade: mapPriorityForBackend(formData.prioridade),
+        categoria: "trabalho",
+        prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
         concluida: false,
       })
@@ -142,7 +140,7 @@ export default function TasksPage() {
       titulo: "",
       descricao: "",
       categoria: "trabalho",
-      prioridade: "média" as "baixa" | "média" | "alta",
+      prioridade: "media",
       dataConclusao: "",
     })
     setEditingTask(null)
@@ -155,7 +153,7 @@ export default function TasksPage() {
       titulo: task.titulo,
       descricao: task.descricao,
       categoria: "trabalho",
-      prioridade: mapPriorityForFrontend(task.prioridade),
+      prioridade: task.prioridade.toLocaleLowerCase(),
       dataConclusao: task.dataConclusao,
     })
     setIsDialogOpen(true)
@@ -169,8 +167,8 @@ export default function TasksPage() {
       const payload = {
         titulo: formData.titulo,
         descricao: formData.descricao,
-        categoria: formData.categoria,
-        prioridade: mapPriorityForBackend(formData.prioridade),
+        categoria: "trabalho",
+        prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
       }
 
@@ -200,30 +198,6 @@ export default function TasksPage() {
     }
   }
 
-
-  // Busca no backend ao digitar no campo de pesquisa
-  useEffect(() => {
-    async function fetchFilteredTasks() {
-      setLoading(true)
-      try {
-        if (searchQuery.trim() === "") {
-          // Se o campo está vazio, carregue todas as tarefas normalmente
-          const data = await getAllTasks()
-          setTasks(data)
-        } else {
-          // Busca filtrada no backend
-          const data = await searchTasks(searchQuery)
-          setTasks(data)
-        }
-      } catch (err) {
-        setError("Erro ao buscar tarefas")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchFilteredTasks()
-  }, [searchQuery])
-
   // Filtro local agora só para categoria e status
   const filteredTasks = tasks.filter((task) => {
     const categoryMatch = filterCategory === "todas" || task.categoria === filterCategory
@@ -244,11 +218,11 @@ export default function TasksPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "alta":
+      case "ALTA":
         return "bg-red-500/10 text-red-700 border-red-200"
-      case "média":
+      case "MEDIA":
         return "bg-yellow-500/10 text-yellow-700 border-yellow-200"
-      case "baixa":
+      case "BAIXA":
         return "bg-green-500/10 text-green-700 border-green-200"
       default:
         return "bg-gray-500/10 text-gray-700 border-gray-200"
@@ -324,7 +298,7 @@ export default function TasksPage() {
                             <Select
                               value={formData.prioridade}
                               onValueChange={(value) =>
-                                setFormData({ ...formData, prioridade: value as "baixa" | "média" | "alta" })
+                                setFormData({ ...formData, prioridade: value })
                               }
                             >
                               <SelectTrigger id="priority">
@@ -332,7 +306,7 @@ export default function TasksPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="baixa">Baixa</SelectItem>
-                                <SelectItem value="média">Média</SelectItem>
+                                <SelectItem value="media">Média</SelectItem>
                                 <SelectItem value="alta">Alta</SelectItem>
                               </SelectContent>
                             </Select>
@@ -497,8 +471,8 @@ export default function TasksPage() {
                               <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.categoria)} mr-1.5`} />
                               {getCategoryName(task.categoria)}
                             </Badge>
-                            <Badge variant="outline" className={getPriorityColor(mapPriorityForFrontend(task.prioridade))}>
-                              {mapPriorityForFrontend(task.prioridade).charAt(0).toUpperCase() + mapPriorityForFrontend(task.prioridade).slice(1)}
+                            <Badge variant="outline" className={getPriorityColor(task.prioridade)}>
+                              {task.prioridade.charAt(0).toUpperCase() + task.prioridade.slice(1)}
                             </Badge>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3.5 w-3.5" />
@@ -511,6 +485,46 @@ export default function TasksPage() {
                   </Card>
                 ))
               )}
+            </div>
+            {/* Paginação */}
+            <div className="flex justify-center items-center gap-2 pt-4 border-t border-border">
+             
+              <Button
+                variant="outline"
+                onClick={() => fetchList(page - 1, size)}
+                disabled={loading || page <= 0}
+              >
+                Anterior
+              </Button>
+
+              {totalPages > 0 && (() => {
+                const windowSize = 5 
+                const start = Math.max(0, Math.min(page - Math.floor(windowSize / 2), Math.max(0, totalPages - windowSize)))
+                const end = Math.min(totalPages, start + windowSize)
+                const buttons = []
+                for (let i = start; i < end; i++) {
+                  buttons.push(
+                    <Button
+                      key={i}
+                      variant={i === page ? "default" : "outline"}
+                      className={i === page ? "border-primary" : ""}
+                      onClick={() => fetchList(i, size)}
+                      disabled={loading}
+                    >
+                      {i + 1}
+                    </Button>
+                  )
+                }
+                return buttons
+              })()}
+
+              <Button
+                variant="outline"
+                onClick={() => fetchList(page + 1, size)}
+                disabled={loading || page + 1 >= totalPages}
+              >
+                Próximo
+              </Button>
             </div>
           </div>
         </div>

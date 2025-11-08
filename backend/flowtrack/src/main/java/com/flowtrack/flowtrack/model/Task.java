@@ -1,5 +1,6 @@
 package com.flowtrack.flowtrack.model;
 
+import com.flowtrack.flowtrack.enums.Prioridade;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,10 +25,10 @@ public class Task {
     private LocalDate dataCriacao;
     private LocalDate dataConclusao;
     private boolean concluida;
-    private Integer prioridade; // 1 (alta) 2 (média) 3 (baixa)
+    private Prioridade prioridade;
 
 //    @ManyToOne
-//    private Category categoria;
+    private String categoria;
 
     // solucao temporaria aguardando implementacao de autenticacao
     @ManyToOne
