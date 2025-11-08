@@ -30,8 +30,7 @@ public class TaskController {
     @Operation(summary = "Listar tarefas", description = "Retorna uma página de tarefas. Se o parâmetro 'titulo' for informado, filtra pelo título.")
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(
-            @ParameterObject Pageable pageable) {
-
+           @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(taskService.getAllTasks(pageable));
     }
 

@@ -1,3 +1,4 @@
+import { getPage, getPageByDateRange } from "../page"
 import { apiRequest } from "./config"
 
 /**
@@ -5,14 +6,21 @@ import { apiRequest } from "./config"
  */
 export interface MoodEntry {
   id: number
-  mood: string
+  humor: string
   emoji: string
-  energy: number
-  stress: number
-  notes: string
-  date: string
+  energia: number
+  estresse: number
+  notas: string
   userId?: number
-  createdAt?: string
+  dataCriacao: string
+}
+
+export type CreateMoodEntryDTO = {
+  humor: number
+  emoji: string
+  energia: number
+  estresse: number
+  notas: string
 }
 
 /**
@@ -26,8 +34,12 @@ export interface MoodEntry {
  * setEntries(entries)
  * ```
  */
-export async function getAllMoodEntries(): Promise<MoodEntry[]> {
-  return apiRequest<MoodEntry[]>("/mood")
+export async function getAllMoodEntries(params?: {
+  page?: number
+  size?: number
+  sort?: string
+}) {
+  return getPage<MoodEntry>("/mood", params)
 }
 
 /**
@@ -40,8 +52,12 @@ export async function getAllMoodEntries(): Promise<MoodEntry[]> {
  * const entries = await getMoodEntriesByDateRange("2025-10-01", "2025-10-31")
  * ```
  */
-export async function getMoodEntriesByDateRange(startDate: string, endDate: string): Promise<MoodEntry[]> {
-  return apiRequest<MoodEntry[]>(`/mood?startDate=${startDate}&endDate=${endDate}`)
+export async function getMoodEntriesByDateRange(
+  startDate: string,
+  endDate: string,
+  params?: { page?: number; size?: number; sort?: string }
+) {
+  return getPageByDateRange<MoodEntry>("/mood", startDate, endDate, params)
 }
 
 /**
@@ -75,7 +91,7 @@ export async function getMoodEntryById(id: number): Promise<MoodEntry> {
  * })
  * ```
  */
-export async function createMoodEntry(entry: Omit<MoodEntry, "id" | "createdAt">): Promise<MoodEntry> {
+export async function createMoodEntry(entry: CreateMoodEntryDTO): Promise<MoodEntry> {
   return apiRequest<MoodEntry>("/mood", {
     method: "POST",
     body: JSON.stringify(entry),
@@ -94,7 +110,7 @@ export async function createMoodEntry(entry: Omit<MoodEntry, "id" | "createdAt">
  * })
  * ```
  */
-export async function updateMoodEntry(id: number, entry: Partial<MoodEntry>): Promise<MoodEntry> {
+export async function updateMoodEntry(id: number, entry: Partial<CreateMoodEntryDTO>): Promise<MoodEntry> {
   return apiRequest<MoodEntry>(`/mood/${id}`, {
     method: "PUT",
     body: JSON.stringify(entry),
