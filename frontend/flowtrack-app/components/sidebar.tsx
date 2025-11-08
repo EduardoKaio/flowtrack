@@ -27,12 +27,12 @@ const navigation = [
   { name: "Tarefas", href: "/tarefas", icon: CheckSquare },
   { name: "Categorias", href: "/categorias", icon: FolderKanban },
   { name: "Hábitos", href: "/habitos", icon: Target },
-  { name: "Rotina", href: "/rotina", icon: Calendar },
+  // { name: "Rotina", href: "/rotina", icon: Calendar },
   { name: "Foco", href: "/foco", icon: Timer },
   { name: "Lembretes", href: "/lembretes", icon: Bell },
   { name: "Bem-estar", href: "/bem-estar", icon: Heart },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
-  { name: "Configurações", href: "/configuracoes", icon: Settings },
+  // { name: "Configurações", href: "/configuracoes", icon: Settings },
 ]
 
 export function Sidebar() {
