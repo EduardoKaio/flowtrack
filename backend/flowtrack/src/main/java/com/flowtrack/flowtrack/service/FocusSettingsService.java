@@ -1,5 +1,5 @@
 package com.flowtrack.flowtrack.service;
-
+import com.flowtrack.flowtrack.model.FocusSettings;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.FocusSettingsRepository;
 import org.springframework.stereotype.Service;

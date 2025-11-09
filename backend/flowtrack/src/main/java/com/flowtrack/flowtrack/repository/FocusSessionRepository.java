@@ -1,5 +1,5 @@
 package com.flowtrack.flowtrack.repository;
-
+import com.flowtrack.flowtrack.model.FocusSession;
 import com.flowtrack.flowtrack.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDateTime;

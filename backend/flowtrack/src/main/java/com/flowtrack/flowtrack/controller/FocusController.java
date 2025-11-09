@@ -1,7 +1,8 @@
 package com.flowtrack.flowtrack.controller;
-
 import com.flowtrack.flowtrack.dto.FocusSessionCreateDTO;
 import com.flowtrack.flowtrack.dto.FocusSettingsDTO;
+import com.flowtrack.flowtrack.model.FocusSession;
+import com.flowtrack.flowtrack.model.FocusSettings;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.service.FocusSessionService;
 import com.flowtrack.flowtrack.service.FocusSettingsService;
@@ -42,7 +43,7 @@ public class FocusController {
 
     @GetMapping("/sessions")
     @Operation(summary = "Listar sessões", description = "Retorna todas as sessões de foco do usuário, opcionalmente filtradas por data")
-    public ResponseEntity<List<FocusSession>> listSessions( @RequestHeader("userID") String userID, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    public ResponseEntity<List<FocusSession>> listSessions(@RequestHeader("userID") String userID, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
         User user = getUser(userID);
         if (date != null) {
