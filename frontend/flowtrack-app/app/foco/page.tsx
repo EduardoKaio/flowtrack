@@ -36,50 +36,97 @@ interface Session {
 }
 
 export default function FocusPage() {
+  // Estados principais
   const [settings, setSettings] = useState<PomodoroSettings>({
     focusTime: 25,
     shortBreakTime: 5,
     longBreakTime: 15,
     sessionsUntilLongBreak: 4,
   })
-
+  const [tempSettings, setTempSettings] = useState(settings)
   const [mode, setMode] = useState<TimerMode>("focus")
   const [timeLeft, setTimeLeft] = useState(settings.focusTime * 60)
   const [isRunning, setIsRunning] = useState(false)
   const [completedSessions, setCompletedSessions] = useState(0)
   const [sessions, setSessions] = useState<Session[]>([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [tempSettings, setTempSettings] = useState(settings)
   const [isFullscreen, setIsFullscreen] = useState(false)
-
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Carregar settings do localStorage
   useEffect(() => {
-    const autoStart = localStorage.getItem("autoStartTimer")
-    if (autoStart === "true") {
-      setIsRunning(true)
-      localStorage.removeItem("autoStartTimer")
+    if (typeof window !== "undefined") {
+      const storedSettings = localStorage.getItem("pomodoroSettings")
+      if (storedSettings) {
+        const parsed = JSON.parse(storedSettings)
+        setSettings(parsed)
+        setTempSettings(parsed)
+        setTimeLeft(parsed.focusTime * 60)
+      }
+
+      const storedSessions = localStorage.getItem("pomodoroSessions")
+      if (storedSessions) {
+        setSessions(JSON.parse(storedSessions))
+      }
+
+      const autoStart = localStorage.getItem("autoStartTimer")
+      if (autoStart === "true") {
+        setIsRunning(true)
+        localStorage.removeItem("autoStartTimer")
+      }
     }
   }, [])
 
+  // Salvar settings e resetar timer
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pomodoroSettings", JSON.stringify(settings))
+      setTimeLeft(settings.focusTime * 60)
+    }
+  }, [settings])
+
+  // Salvar sessões
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pomodoroSessions", JSON.stringify(sessions))
+    }
+  }, [sessions])
+
+  // Timer
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => prev - 1)
       }, 1000)
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isRunning) {
       handleTimerComplete()
     }
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [isRunning, timeLeft])
 
+  // Notificações
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  // Fullscreen listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
+  }, [])
+
+  // Funções auxiliares
   const handleTimerComplete = () => {
     setIsRunning(false)
+    let newMode: TimerMode = "focus"
 
     if (mode === "focus") {
       const newSession: Session = {
@@ -92,16 +139,18 @@ export default function FocusPage() {
       setCompletedSessions((prev) => prev + 1)
 
       if ((completedSessions + 1) % settings.sessionsUntilLongBreak === 0) {
-        setMode("longBreak")
+        newMode = "longBreak"
         setTimeLeft(settings.longBreakTime * 60)
       } else {
-        setMode("shortBreak")
+        newMode = "shortBreak"
         setTimeLeft(settings.shortBreakTime * 60)
       }
     } else {
-      setMode("focus")
+      newMode = "focus"
       setTimeLeft(settings.focusTime * 60)
     }
+
+    setMode(newMode)
 
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
       new Notification("Pomodoro Timer", {
@@ -110,14 +159,16 @@ export default function FocusPage() {
     }
   }
 
-  const toggleTimer = () => {
-    setIsRunning(!isRunning)
-  }
+  const toggleTimer = () => setIsRunning(!isRunning)
 
   const resetTimer = () => {
     setIsRunning(false)
     const duration =
-      mode === "focus" ? settings.focusTime : mode === "shortBreak" ? settings.shortBreakTime : settings.longBreakTime
+        mode === "focus"
+            ? settings.focusTime
+            : mode === "shortBreak"
+                ? settings.shortBreakTime
+                : settings.longBreakTime
     setTimeLeft(duration * 60)
   }
 
@@ -125,11 +176,11 @@ export default function FocusPage() {
     setIsRunning(false)
     setMode(newMode)
     const duration =
-      newMode === "focus"
-        ? settings.focusTime
-        : newMode === "shortBreak"
-          ? settings.shortBreakTime
-          : settings.longBreakTime
+        newMode === "focus"
+            ? settings.focusTime
+            : newMode === "shortBreak"
+                ? settings.shortBreakTime
+                : settings.longBreakTime
     setTimeLeft(duration * 60)
   }
 
@@ -145,107 +196,69 @@ export default function FocusPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const getTotalDuration = () => {
-    return mode === "focus"
-      ? settings.focusTime * 60
-      : mode === "shortBreak"
-        ? settings.shortBreakTime * 60
-        : settings.longBreakTime * 60
-  }
+  const getTotalDuration = () =>
+      mode === "focus"
+          ? settings.focusTime * 60
+          : mode === "shortBreak"
+              ? settings.shortBreakTime * 60
+              : settings.longBreakTime * 60
 
-  const getProgress = () => {
-    return ((getTotalDuration() - timeLeft) / getTotalDuration()) * 100
-  }
+  const getProgress = () => ((getTotalDuration() - timeLeft) / getTotalDuration()) * 100
 
   const getTodaySessions = () => {
     const today = new Date().toISOString().split("T")[0]
     return sessions.filter((s) => s.completedAt.startsWith(today))
   }
 
-  const getTodayFocusTime = () => {
-    return getTodaySessions().reduce((total, session) => total + session.duration, 0)
-  }
-
-  const requestNotificationPermission = () => {
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission()
-    }
-  }
-
-  useEffect(() => {
-    requestNotificationPermission()
-  }, [])
+  const getTodayFocusTime = () => getTodaySessions().reduce((total, session) => total + session.duration, 0)
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true)
-      })
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true))
     } else {
-      document.exitFullscreen().then(() => {
-        setIsFullscreen(false)
-      })
+      document.exitFullscreen().then(() => setIsFullscreen(false))
     }
   }
 
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange)
-    }
-  }, [])
-
+  // Render Fullscreen
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center p-8">
-        <div className="w-full max-w-2xl text-center">
-          {/* Mode Indicator */}
-          <div className="mb-8">
-            <p className="text-2xl text-muted-foreground mb-2">
-              {mode === "focus" ? "Tempo de Foco" : mode === "shortBreak" ? "Pausa Curta" : "Pausa Longa"}
-            </p>
-          </div>
-
-          {/* Timer Display */}
-          <div className="mb-12">
-            <div className="text-[12rem] font-bold text-foreground font-mono leading-none mb-8">
-              {formatTime(timeLeft)}
+        <div className="fixed inset-0 bg-background flex items-center justify-center p-8">
+          <div className="w-full max-w-2xl text-center">
+            <div className="mb-8">
+              <p className="text-2xl text-muted-foreground mb-2">
+                {mode === "focus" ? "Tempo de Foco" : mode === "shortBreak" ? "Pausa Curta" : "Pausa Longa"}
+              </p>
             </div>
-            <Progress value={getProgress()} className="h-3 mb-4" />
-          </div>
-
-          {/* Controls */}
-          <div className="flex gap-6 justify-center mb-8">
-            <Button size="lg" onClick={toggleTimer} className="w-40 h-16 text-xl">
-              {isRunning ? (
-                <>
-                  <Pause className="h-6 w-6 mr-3" />
-                  Pausar
-                </>
-              ) : (
-                <>
-                  <Play className="h-6 w-6 mr-3" />
-                  Iniciar
-                </>
-              )}
+            <div className="mb-12">
+              <div className="text-[12rem] font-bold text-foreground font-mono leading-none mb-8">{formatTime(timeLeft)}</div>
+              <Progress value={getProgress()} className="h-3 mb-4" />
+            </div>
+            <div className="flex gap-6 justify-center mb-8">
+              <Button size="lg" onClick={toggleTimer} className="w-40 h-16 text-xl">
+                {isRunning ? (
+                    <>
+                      <Pause className="h-6 w-6 mr-3" />
+                      Pausar
+                    </>
+                ) : (
+                    <>
+                      <Play className="h-6 w-6 mr-3" />
+                      Iniciar
+                    </>
+                )}
+              </Button>
+              <Button size="lg" variant="outline" onClick={resetTimer} className="w-40 h-16 text-xl bg-transparent">
+                <RotateCcw className="h-6 w-6 mr-3" />
+                Resetar
+              </Button>
+            </div>
+            <Button variant="ghost" onClick={toggleFullscreen} className="text-muted-foreground">
+              <Minimize className="h-5 w-5 mr-2" />
+              Sair da Tela Cheia
             </Button>
-            <Button size="lg" variant="outline" onClick={resetTimer} className="w-40 h-16 text-xl bg-transparent">
-              <RotateCcw className="h-6 w-6 mr-3" />
-              Resetar
-            </Button>
           </div>
-
-          {/* Exit Fullscreen */}
-          <Button variant="ghost" onClick={toggleFullscreen} className="text-muted-foreground">
-            <Minimize className="h-5 w-5 mr-2" />
-            Sair da Tela Cheia
-          </Button>
         </div>
-      </div>
     )
   }
 
