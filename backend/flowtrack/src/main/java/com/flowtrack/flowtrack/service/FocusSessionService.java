@@ -1,9 +1,9 @@
 package com.flowtrack.flowtrack.service;
 
+import com.flowtrack.flowtrack.model.FocusSession;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.FocusSessionRepository;
 import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
