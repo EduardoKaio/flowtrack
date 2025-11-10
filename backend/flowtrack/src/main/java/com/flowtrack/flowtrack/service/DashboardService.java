@@ -4,8 +4,10 @@ import com.flowtrack.flowtrack.dto.DashboardDTO;
 import com.flowtrack.flowtrack.dto.TaskDTO;
 import com.flowtrack.flowtrack.mapper.MoodMapper;
 import com.flowtrack.flowtrack.mapper.TaskMapper;
+import com.flowtrack.flowtrack.model.FocusSession;
 import com.flowtrack.flowtrack.model.Mood;
 import com.flowtrack.flowtrack.model.Task;
+import com.flowtrack.flowtrack.repository.FocusSessionRepository;
 import com.flowtrack.flowtrack.repository.MoodRepository;
 import com.flowtrack.flowtrack.repository.TaskRepository;
 import org.springframework.stereotype.Service;
@@ -21,12 +23,14 @@ public class DashboardService {
 
     private final TaskRepository taskRepository;
     private final MoodRepository moodRepository;
+    private final FocusSessionRepository focusSessionRepository;
     private final TaskMapper taskMapper;
     private final MoodMapper moodMapper;
 
-    public DashboardService(TaskRepository taskRepository, MoodRepository moodRepository, TaskMapper taskMapper, MoodMapper moodMapper) {
+    public DashboardService(TaskRepository taskRepository, MoodRepository moodRepository, FocusSessionRepository focusSessionRepository,TaskMapper taskMapper, MoodMapper moodMapper) {
         this.taskRepository = taskRepository;
         this.moodRepository = moodRepository;
+        this.focusSessionRepository = focusSessionRepository;
         this.taskMapper = taskMapper;
         this.moodMapper = moodMapper;
     }
@@ -55,7 +59,12 @@ public class DashboardService {
             moodString = latestMood.getHumor() != null ? latestMood.getHumor().toString() : "Indefinido"; 
             moodEmoji = latestMood.getEmoji() != null ? latestMood.getEmoji() : "🤔";
         }
+        
+        // --- Estatísticas de Foco ---
+        List<FocusSession> todaySessions = focusSessionRepository.findByInicioBetween(todayStart, todayEnd);
+        long focusTimeToday = todaySessions.stream().mapToLong(FocusSession::getDuracaoMin).sum();
+        long focusSessionsToday = todaySessions.size();
 
-        return new DashboardDTO(completed, total, moodString, moodEmoji, taskDTOs);
+        return new DashboardDTO(completed, total, moodString, moodEmoji, taskDTOs, focusTimeToday, focusSessionsToday);
     }
 }

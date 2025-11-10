@@ -23,8 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getDashboardStats, type DashboardStats } from "@/lib/api/dashboard"
-import type { Task } from "@/lib/api/tasks"
+import { getDashboardStats, type DashboardStats, type TaskDTO } from "@/lib/api/dashboard"
 
 
 export default function DashboardPage() {
@@ -82,12 +81,12 @@ export default function DashboardPage() {
   const tasksTotal = dashboardData?.tasksTotalToday ?? 0;
   const tasksProgress = tasksTotal > 0 ? (tasksCompleted / tasksTotal) * 100 : 0;
 
-  const todayStats = {
-    focusTime: 145,
-    habitsCompleted: 5,
-    habitsTotal: 7,
-  }
-  const habitsProgress = (todayStats.habitsCompleted / todayStats.habitsTotal) * 100
+  const focusTime = dashboardData?.focusTimeToday ?? 0;
+  const focusSessions = dashboardData?.focusSessionsToday ?? 0;
+
+  const habitsCompleted = 5; 
+  const habitsTotal = 10;
+  const habitsProgress = habitsTotal > 0 ? (habitsCompleted / habitsTotal) * 100 : 0;
 
   if (loading) {
     return (
@@ -245,14 +244,16 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Tempo Focado</CardTitle>
                   <Clock className="h-5 w-5 text-secondary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-foreground">{todayStats.focusTime}min</div>
-                  <p className="text-xs text-muted-foreground mt-2">~6 sessões Pomodoro</p>
+                  <div className="text-3xl font-bold text-foreground">{focusTime}min</div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {focusSessions} {focusSessions === 1 ? "sessão" : "sessões"} Pomodoro hoje
+                  </p>
                 </CardContent>
               </Card>
 
@@ -263,7 +264,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-foreground">
-                    {todayStats.habitsCompleted}/{todayStats.habitsTotal}
+                    {habitsCompleted}/{habitsTotal}
                   </div>
                   <Progress value={habitsProgress} className="mt-3" />
                   <p className="text-xs text-muted-foreground mt-2">Continue assim! 🔥</p>
@@ -282,7 +283,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {dashboardData && dashboardData.todayTasks.length > 0 ? (
-                      dashboardData.todayTasks.map((task: Task) => (
+                      dashboardData.todayTasks.map((task: TaskDTO) => (
                         <div
                           key={task.id}
                           className="flex items-start gap-3 rounded-lg border border-border p-3 hover:bg-accent/5 hover:border-accent/30 transition-colors"

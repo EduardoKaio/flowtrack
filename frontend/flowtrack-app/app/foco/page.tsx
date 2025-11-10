@@ -18,6 +18,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  getPomodoroSettings,
+  createSession,
+  updatePomodoroSettings,
+  getAllSessions,
+} from "@/lib/api/focus"
 
 type TimerMode = "focus" | "shortBreak" | "longBreak"
 
@@ -53,44 +59,46 @@ export default function FocusPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Carregar settings do localStorage
+  interface BackendFocusSession {
+    id: number
+    inicio: string
+    fim: string
+    duracaoMin: number
+   
+  }
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedSettings = localStorage.getItem("pomodoroSettings")
-      if (storedSettings) {
-        const parsed = JSON.parse(storedSettings)
-        setSettings(parsed)
-        setTempSettings(parsed)
-        setTimeLeft(parsed.focusTime * 60)
+    const loadData = async () => {
+
+      try {
+        const settingsFromDB = await getPomodoroSettings()
+        if (settingsFromDB) {
+          setSettings(settingsFromDB)
+          setTempSettings(settingsFromDB)
+          setTimeLeft(settingsFromDB.focusTime * 60)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações", error)
       }
 
-      const storedSessions = localStorage.getItem("pomodoroSessions")
-      if (storedSessions) {
-        setSessions(JSON.parse(storedSessions))
-      }
+      try {
+        const backendSessions: BackendFocusSession[] = await getAllSessions()
+        
+        const frontendSessions: Session[] = backendSessions.map((s) => ({
+          id: s.id,
+          type: "focus", 
+          duration: s.duracaoMin,
+          completedAt: s.fim, 
+        }))
 
-      const autoStart = localStorage.getItem("autoStartTimer")
-      if (autoStart === "true") {
-        setIsRunning(true)
-        localStorage.removeItem("autoStartTimer")
+        setSessions(frontendSessions)
+      } catch (error) {
+        console.error("Erro ao carregar sessões", error)
       }
     }
+
+    loadData()
   }, [])
-
-  // Salvar settings e resetar timer
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pomodoroSettings", JSON.stringify(settings))
-      setTimeLeft(settings.focusTime * 60)
-    }
-  }, [settings])
-
-  // Salvar sessões
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pomodoroSessions", JSON.stringify(sessions))
-    }
-  }, [sessions])
 
   // Timer
   useEffect(() => {
@@ -124,19 +132,33 @@ export default function FocusPage() {
   }, [])
 
   // Funções auxiliares
-  const handleTimerComplete = () => {
+  const handleTimerComplete = async () => {
     setIsRunning(false)
     let newMode: TimerMode = "focus"
 
     if (mode === "focus") {
+      const completionTime = new Date()
+      const startTime = new Date(completionTime.getTime() - settings.focusTime * 60 * 1000)
+
       const newSession: Session = {
-        id: Date.now(),
+        id: Date.now(), 
         type: mode,
         duration: settings.focusTime,
-        completedAt: new Date().toISOString(),
+        completedAt: completionTime.toISOString(),
       }
+
       setSessions([newSession, ...sessions])
       setCompletedSessions((prev) => prev + 1)
+      
+      try {
+        await createSession({
+          inicio: startTime.toISOString(),
+          fim: completionTime.toISOString(),
+          duracaoMin: settings.focusTime,
+        })
+      } catch (error) {
+        console.error("Falha ao salvar sessão no backend", error)
+      }
 
       if ((completedSessions + 1) % settings.sessionsUntilLongBreak === 0) {
         newMode = "longBreak"
@@ -184,10 +206,31 @@ export default function FocusPage() {
     setTimeLeft(duration * 60)
   }
 
-  const saveSettings = () => {
-    setSettings(tempSettings)
-    setIsSettingsOpen(false)
-    resetTimer()
+  const saveSettings = async () => {
+    try {
+
+      const updatedSettings = await updatePomodoroSettings(tempSettings)
+      
+      setSettings(updatedSettings)
+      setTempSettings(updatedSettings)
+      setIsSettingsOpen(false)
+
+      setIsRunning(false) 
+
+      const duration =
+        mode === "focus"
+          ? updatedSettings.focusTime
+          : mode === "shortBreak"
+          ? updatedSettings.shortBreakTime 
+          : updatedSettings.longBreakTime 
+      
+
+      setTimeLeft(duration * 60)
+
+
+    } catch (error) {
+      console.error("Erro ao salvar configurações", error)
+    }
   }
 
   const formatTime = (seconds: number) => {

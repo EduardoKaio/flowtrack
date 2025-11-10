@@ -20,4 +20,8 @@ public class DashboardDTO {
 
     // Lista de Tarefas
     private List<TaskDTO> todayTasks;
+
+    // Estatísticas de Foco
+    private long focusTimeToday;
+    private long focusSessionsToday; 
 }
