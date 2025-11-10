@@ -57,7 +57,6 @@ export default function DashboardPage() {
 
   const handleQuickTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Nova tarefa criada:", taskFormData)
     setTaskFormData({ title: "", description: "", priority: "media", category: "trabalho" })
     setIsNewTaskDialogOpen(false)
   }
@@ -84,8 +83,8 @@ export default function DashboardPage() {
   const focusTime = dashboardData?.focusTimeToday ?? 0;
   const focusSessions = dashboardData?.focusSessionsToday ?? 0;
 
-  const habitsCompleted = 5; 
-  const habitsTotal = 10;
+  const habitsCompleted = dashboardData?.habitsCompletedToday ?? 0;
+  const habitsTotal = dashboardData?.habitsTotalToday ?? 0;
   const habitsProgress = habitsTotal > 0 ? (habitsCompleted / habitsTotal) * 100 : 0;
 
   if (loading) {

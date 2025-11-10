@@ -85,7 +85,6 @@ export default function HabitsPage() {
     try {
       const response = await getHabits();
       setHabitos(response);
-      console.log("Habits loaded:", response);
     } catch (error) {
       console.error("Error loading habits:", error)
     }
@@ -206,7 +205,6 @@ export default function HabitsPage() {
 
     try {
       await addCompleteDay(habitId);
-      console.log("Habit marked as completed for today:", progress);
     } catch (error) {
       console.error("Error toggling habit for today:", error)
     }

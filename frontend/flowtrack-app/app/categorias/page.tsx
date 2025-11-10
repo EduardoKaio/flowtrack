@@ -54,7 +54,6 @@ export default function CategoriesPage() {
     try {
       const response = await getCategories(1);
       setCategories(response);
-      console.log("Categories loaded:", response);
     } catch (error) {
       console.error("Failed to load categories:", error);
     }

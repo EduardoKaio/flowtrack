@@ -5,9 +5,11 @@ import com.flowtrack.flowtrack.dto.TaskDTO;
 import com.flowtrack.flowtrack.mapper.MoodMapper;
 import com.flowtrack.flowtrack.mapper.TaskMapper;
 import com.flowtrack.flowtrack.model.FocusSession;
+import com.flowtrack.flowtrack.model.Habits;
 import com.flowtrack.flowtrack.model.Mood;
 import com.flowtrack.flowtrack.model.Task;
 import com.flowtrack.flowtrack.repository.FocusSessionRepository;
+import com.flowtrack.flowtrack.repository.HabitsRepository;
 import com.flowtrack.flowtrack.repository.MoodRepository;
 import com.flowtrack.flowtrack.repository.TaskRepository;
 import org.springframework.stereotype.Service;
@@ -24,15 +26,19 @@ public class DashboardService {
     private final TaskRepository taskRepository;
     private final MoodRepository moodRepository;
     private final FocusSessionRepository focusSessionRepository;
+    private final HabitsRepository habitsRepository;
     private final TaskMapper taskMapper;
     private final MoodMapper moodMapper;
 
-    public DashboardService(TaskRepository taskRepository, MoodRepository moodRepository, FocusSessionRepository focusSessionRepository,TaskMapper taskMapper, MoodMapper moodMapper) {
+    public DashboardService(TaskRepository taskRepository, MoodRepository moodRepository, 
+                            FocusSessionRepository focusSessionRepository, TaskMapper taskMapper, 
+                            MoodMapper moodMapper, HabitsRepository habitsRepository) { 
         this.taskRepository = taskRepository;
         this.moodRepository = moodRepository;
         this.focusSessionRepository = focusSessionRepository;
         this.taskMapper = taskMapper;
         this.moodMapper = moodMapper;
+        this.habitsRepository = habitsRepository;
     }
 
     public DashboardDTO getDashboardStats() {
@@ -65,6 +71,19 @@ public class DashboardService {
         long focusTimeToday = todaySessions.stream().mapToLong(FocusSession::getDuracaoMin).sum();
         long focusSessionsToday = todaySessions.size();
 
-        return new DashboardDTO(completed, total, moodString, moodEmoji, taskDTOs, focusTimeToday, focusSessionsToday);
+        List<Habits> allHabits = habitsRepository.findAll(); 
+        
+        long habitsTotalToday = allHabits.size(); 
+        
+        long habitsCompletedToday = allHabits.stream()
+                .filter(habit -> habit.getProgresso() != null && 
+                                 habit.getProgresso().getDiasConcluidos().contains(today))
+                .count();
+
+        return new DashboardDTO(
+            completed, total, moodString, moodEmoji, taskDTOs, 
+            focusTimeToday, focusSessionsToday,
+            habitsCompletedToday, habitsTotalToday
+        );
     }
 }
