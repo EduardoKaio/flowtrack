@@ -1,100 +1,37 @@
 import { apiRequest } from "./config"
 
-/**
- * Category interface matching the backend model
- */
 export interface Category {
-  id: string
+  id: number
   name: string
   color: string
   taskCount: number
-  createdAt?: string
-  updatedAt?: string
 }
 
-/**
- * Get all categories
- *
- * Endpoint: GET /api/categories
- *
- * Usage:
- * ```typescript
- * const categories = await getAllCategories()
- * setCategories(categories)
- * ```
- */
-export async function getAllCategories(): Promise<Category[]> {
-  return apiRequest<Category[]>("/categories")
+export interface CategoryCreateRequest extends Omit<Category, "id" | "taskCount"> {}
+
+export async function getCategories(userId: number): Promise<Category[]> {
+  return apiRequest<Category[]>(`/categories?userId=${userId}`, {
+    method: "GET",
+  })
 }
 
-/**
- * Get a single category by ID
- *
- * Endpoint: GET /api/categories/{id}
- *
- * Usage:
- * ```typescript
- * const category = await getCategoryById("trabalho")
- * ```
- */
-export async function getCategoryById(id: string): Promise<Category> {
-  return apiRequest<Category>(`/categories/${id}`)
-}
-
-/**
- * Create a new category
- *
- * Endpoint: POST /api/categories
- *
- * Usage:
- * ```typescript
- * const newCategory = await createCategory({
- *   id: "trabalho",
- *   name: "Trabalho",
- *   color: "bg-blue-500",
- *   taskCount: 0
- * })
- * ```
- */
-export async function createCategory(category: Omit<Category, "createdAt" | "updatedAt">): Promise<Category> {
-  return apiRequest<Category>("/categories", {
+export async function createCategory(userId: number, dto: CategoryCreateRequest): Promise<Category> {
+  console.log("Creating category with data:", dto);
+  return apiRequest<Category>(`/categories?userId=${userId}`, {
     method: "POST",
-    body: JSON.stringify(category),
+    body: JSON.stringify(dto),
   })
 }
 
-/**
- * Update an existing category
- *
- * Endpoint: PUT /api/categories/{id}
- *
- * Usage:
- * ```typescript
- * const updatedCategory = await updateCategory("trabalho", {
- *   name: "Trabalho Atualizado",
- *   color: "bg-green-500"
- * })
- * ```
- */
-export async function updateCategory(id: string, category: Partial<Category>): Promise<Category> {
-  return apiRequest<Category>(`/categories/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(category),
-  })
-}
-
-/**
- * Delete a category
- *
- * Endpoint: DELETE /api/categories/{id}
- *
- * Usage:
- * ```typescript
- * await deleteCategory("trabalho")
- * ```
- */
-export async function deleteCategory(id: string): Promise<void> {
-  return apiRequest<void>(`/categories/${id}`, {
+export async function deleteOrHideCategory(userId: number, categoryId: number): Promise<void> {
+  return apiRequest<void>(`/categories/${categoryId}?userId=${userId}`, {
     method: "DELETE",
+  })
+}
+
+export async function editCategory(categoryId: number, dto: Partial<Omit<Category, "id" | "taskCount">>): Promise<Category> {
+  return apiRequest<Category>(`/categories/${categoryId}`, {
+    method: "PUT",
+    body: JSON.stringify(dto),
   })
 }

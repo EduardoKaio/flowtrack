@@ -1,6 +1,7 @@
 package com.flowtrack.flowtrack.dto;
 
 import com.flowtrack.flowtrack.enums.Prioridade;
+import com.flowtrack.flowtrack.model.Category;
 import com.flowtrack.flowtrack.model.User;
 import lombok.*;
 
@@ -19,6 +20,6 @@ public class TaskDTO {
     private boolean concluida;
     private Prioridade prioridade; // 1 (alta) 2 (média) 3 (baixa)
     private Long userId;
-    private String categoria;
+    private Long categoriaId;
 
 }
