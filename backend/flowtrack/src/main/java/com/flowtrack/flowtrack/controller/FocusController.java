@@ -125,18 +125,12 @@ public class FocusController {
     @PutMapping("/settings")
     @Operation(summary = "Atualizar configurações", description = "Atualiza as configurações de foco do usuário")
     public ResponseEntity<FocusSettings> updateSettings(@RequestHeader("userID") String userID, @RequestBody @Valid FocusSettingsDTO dto) {
-
+        
         User user = getUser(userID);
-        FocusSettings settings = new FocusSettings();
-        settings.setFocusTime(dto.getFocusTime());
-        settings.setShortBreakTime(dto.getShortBreakTime());
-        settings.setLongBreakTime(dto.getLongBreakTime());
-        settings.setSessionsUntilLongBreak(dto.getSessionsUntilLongBreak());
-        settings.setUsuario(user);
-
-        FocusSettings saved = settingsService.saveFocusSettings(settings);
+        
+        FocusSettings saved = settingsService.saveFocusSettings(user, dto);
+        
         return ResponseEntity.ok(saved);
-
     }
 
 }

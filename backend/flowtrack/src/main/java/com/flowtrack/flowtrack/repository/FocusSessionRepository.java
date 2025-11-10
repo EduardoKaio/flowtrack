@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface FocusSessionRepository extends JpaRepository<FocusSession, Long> {
 
+    List<FocusSession> findByInicioBetween(LocalDateTime start, LocalDateTime end);
+    
     List<FocusSession> findByUsuario(User usuario);
 
     List<FocusSession> findByUsuarioAndInicioBetween(User usuario, LocalDateTime inicio, LocalDateTime fim);
