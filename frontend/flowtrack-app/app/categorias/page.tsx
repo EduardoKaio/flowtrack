@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,9 +19,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Plus, Trash2, Edit, FolderKanban } from "lucide-react"
+import { get } from "http"
+import { createCategory, deleteOrHideCategory, editCategory, getCategories } from "@/lib/api"
 
 interface Category {
-  id: string
+  id: number
   name: string
   color: string
   taskCount: number
@@ -39,13 +41,7 @@ const colorOptions = [
 ]
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "trabalho", name: "Trabalho", color: "bg-blue-500", taskCount: 8 },
-    { id: "estudo", name: "Estudo", color: "bg-purple-500", taskCount: 5 },
-    { id: "saude", name: "Saúde", color: "bg-green-500", taskCount: 3 },
-    { id: "lazer", name: "Lazer", color: "bg-orange-500", taskCount: 2 },
-    { id: "pessoal", name: "Pessoal", color: "bg-pink-500", taskCount: 4 },
-  ])
+  const [categories, setCategories] = useState<Category[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -54,24 +50,43 @@ export default function CategoriesPage() {
     color: "bg-blue-500",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingCategory) {
-      setCategories(
-        categories.map((cat) =>
-          cat.id === editingCategory.id ? { ...cat, name: formData.name, color: formData.color } : cat,
-        ),
-      )
-    } else {
-      const newCategory: Category = {
-        id: formData.name.toLowerCase().replace(/\s+/g, "-"),
-        name: formData.name,
-        color: formData.color,
-        taskCount: 0,
-      }
-      setCategories([...categories, newCategory])
+  async function loadCategories() {
+    try {
+      const response = await getCategories(1);
+      setCategories(response);
+      console.log("Categories loaded:", response);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
     }
-    resetForm()
+  }
+
+  useEffect(() => {
+    loadCategories();
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {  
+    e.preventDefault()
+    try {
+      if (editingCategory) {
+        // Call API to edit category
+        await editCategory(editingCategory.id, {
+          name: formData.name,
+          color: formData.color,
+        })
+      } else {
+        // Call API to create category
+        await createCategory(1, {
+          name: formData.name,
+          color: formData.color,
+        })
+      }
+
+      loadCategories()
+      resetForm()
+    } catch (error) {
+      console.error("Failed to submit category:", error)
+      return
+    }
   }
 
   const resetForm = () => {
@@ -89,8 +104,14 @@ export default function CategoriesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setCategories(categories.filter((cat) => cat.id !== id))
+  const handleDelete = async (id: number) => {
+      try {
+        // Call API to delete category
+        await deleteOrHideCategory(1, id)
+        loadCategories()
+      } catch (error) {
+        console.error("Failed to delete category:", error)
+      }
   }
 
   return (

@@ -1,6 +1,8 @@
 package com.flowtrack.flowtrack.model;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,5 +23,13 @@ public class User {
     private String email;
     private String senha;
     private String role; // "ADMIN" ou "USER"
+
+    @ManyToMany
+    @JoinTable(
+        name = "user_hidden_categories",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> hiddenCategories = new HashSet<>();
 }
 

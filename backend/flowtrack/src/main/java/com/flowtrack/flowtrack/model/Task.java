@@ -1,5 +1,6 @@
 package com.flowtrack.flowtrack.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.flowtrack.flowtrack.enums.Prioridade;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -27,8 +28,10 @@ public class Task {
     private boolean concluida;
     private Prioridade prioridade;
 
-//    @ManyToOne
-    private String categoria;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    @JsonIgnore
+    private Category category;   
 
     // solucao temporaria aguardando implementacao de autenticacao
     @ManyToOne
