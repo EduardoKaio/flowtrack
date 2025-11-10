@@ -22,9 +22,10 @@ export interface DashboardStats {
   currentMoodEmoji: string
   todayTasks: TaskDTO[] // Alterado de Task[] para TaskDTO[]
   
-  // --- CAMPOS ADICIONADOS ---
   focusTimeToday: number
   focusSessionsToday: number
+  habitsCompletedToday: number
+  habitsTotalToday: number
 }
 
 /**

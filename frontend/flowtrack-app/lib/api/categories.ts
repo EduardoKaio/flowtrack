@@ -16,7 +16,6 @@ export async function getCategories(userId: number): Promise<Category[]> {
 }
 
 export async function createCategory(userId: number, dto: CategoryCreateRequest): Promise<Category> {
-  console.log("Creating category with data:", dto);
   return apiRequest<Category>(`/categories?userId=${userId}`, {
     method: "POST",
     body: JSON.stringify(dto),

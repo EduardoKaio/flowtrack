@@ -24,4 +24,8 @@ public class DashboardDTO {
     // Estatísticas de Foco
     private long focusTimeToday;
     private long focusSessionsToday; 
+
+    // Estatísticas de Hábitos
+    private long habitsCompletedToday;
+    private long habitsTotalToday;
 }
