@@ -1,17 +1,15 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
+import axios from "axios"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -22,117 +20,89 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit, Bell, Volume2, VolumeX, Upload, Clock, X, CheckCircle, RotateCcw } from "lucide-react"
+import { Plus, Trash2, Edit, Bell, Clock, X, CheckCircle, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 interface Reminder {
   id: number
-  title: string
-  message: string
-  interval: number
-  intervalUnit: "minutes" | "hours"
-  soundType: "default" | "none" | "custom"
-  customSoundUrl?: string
-  linkToFocus: boolean
-  enabled: boolean
-  lastTriggered?: string
+  titulo: string
+  descricao: string
+  dataHora: string
+  ativo: boolean
 }
 
 export default function RemindersPage() {
-  const [reminders, setReminders] = useState<Reminder[]>([
-    {
-      id: 1,
-      title: "Beber água",
-      message: "Hora de se hidratar!",
-      interval: 30,
-      intervalUnit: "minutes",
-      soundType: "default",
-      linkToFocus: false,
-      enabled: true,
-    },
-    {
-      id: 2,
-      title: "Alongamento",
-      message: "Faça uma pausa para alongar",
-      interval: 1,
-      intervalUnit: "hours",
-      soundType: "default",
-      linkToFocus: true,
-      enabled: true,
-    },
-  ])
-
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
   const [activeReminderPopup, setActiveReminderPopup] = useState<Reminder | null>(null)
+
+  // FORM DATA SEM usuárioEmail
   const [formData, setFormData] = useState({
-    title: "",
-    message: "",
-    interval: 30,
-    intervalUnit: "minutes" as "minutes" | "hours",
-    soundType: "default" as "default" | "none" | "custom",
-    customSoundUrl: "",
-    linkToFocus: false,
+    titulo: "",
+    descricao: "",
+    dataHora: "",
+    ativo: true,
   })
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const activeTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map())
 
+  const API_BASE = "http://localhost:8080/api/reminders"
+
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+    if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission()
     }
 
-    const savedReminders = localStorage.getItem("reminders")
-    if (savedReminders) {
-      setReminders(JSON.parse(savedReminders))
-    }
-
-    reminders.forEach((reminder) => {
-      if (reminder.enabled) {
-        startReminderTimer(reminder)
-      }
-    })
-
-    return () => {
-      activeTimersRef.current.forEach((timer) => clearInterval(timer))
-      activeTimersRef.current.clear()
-    }
+    loadReminders()
   }, [])
 
   useEffect(() => {
-    if (reminders.length > 0) {
-      localStorage.setItem("reminders", JSON.stringify(reminders))
-    }
-
-    activeTimersRef.current.forEach((timer) => clearInterval(timer))
+    activeTimersRef.current.forEach((t) => clearTimeout(t))
     activeTimersRef.current.clear()
 
     reminders.forEach((reminder) => {
-      if (reminder.enabled) {
-        startReminderTimer(reminder)
-      }
+      if (reminder.ativo) startReminderTimer(reminder)
     })
   }, [reminders])
 
-  const startReminderTimer = (reminder: Reminder) => {
-    if (activeTimersRef.current.has(reminder.id)) {
-      clearInterval(activeTimersRef.current.get(reminder.id))
-    }
-
-    const intervalMs = reminder.interval * (reminder.intervalUnit === "hours" ? 3600000 : 60000)
-
-    const timer = setInterval(() => {
-      triggerReminder(reminder)
-    }, intervalMs)
-
-    activeTimersRef.current.set(reminder.id, timer)
+  const getUserID = () => {
+    return localStorage.getItem("userID") || "1" // modificar conforme login real
   }
 
-  const stopReminderTimer = (reminderId: number) => {
-    if (activeTimersRef.current.has(reminderId)) {
-      clearInterval(activeTimersRef.current.get(reminderId))
-      activeTimersRef.current.delete(reminderId)
+  const axiosConfig = () => ({
+    headers: {
+      userID: getUserID(),
+      "Content-Type": "application/json",
+    },
+  })
+
+  const loadReminders = async () => {
+    try {
+      const response = await axios.get(API_BASE, axiosConfig())
+      setReminders(response.data || [])  // Alterado para response.data diretamente
+    } catch (error) {
+      toast.error("Erro ao carregar lembretes")
+    }
+  }
+
+  const startReminderTimer = (reminder: Reminder) => {
+    if (activeTimersRef.current.has(reminder.id)) {
+      clearTimeout(activeTimersRef.current.get(reminder.id))
+    }
+
+    const delay = new Date(reminder.dataHora).getTime() - Date.now()
+
+    if (delay > 0) {
+      const t = setTimeout(() => triggerReminder(reminder), delay)
+      activeTimersRef.current.set(reminder.id, t)
+    }
+  }
+
+  const stopReminderTimer = (id: number) => {
+    if (activeTimersRef.current.has(id)) {
+      clearTimeout(activeTimersRef.current.get(id))
+      activeTimersRef.current.delete(id)
     }
   }
 
@@ -140,80 +110,84 @@ export default function RemindersPage() {
     const audio = new Audio("/notification.mp3")
     audio.play().catch(() => {})
 
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      new Notification(reminder.title, {
-        body: reminder.message,
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(reminder.titulo, {
+        body: `Lembrete: ${reminder.titulo}`,
         icon: "/brass-school-bell.png",
       })
     }
 
-    if (reminder.soundType === "default") {
-      const audio = new Audio("/notification.mp3")
-      audio.play().catch(() => {})
-    } else if (reminder.soundType === "custom" && reminder.customSoundUrl) {
-      const audio = new Audio(reminder.customSoundUrl)
-      audio.play().catch(() => {})
-    }
-
     setActiveReminderPopup(reminder)
-
-    setReminders((prev) =>
-      prev.map((r) => (r.id === reminder.id ? { ...r, lastTriggered: new Date().toISOString() } : r)),
-    )
+    toggleEnabled(reminder.id, false)
   }
 
-  const handleReminderClose = () => {
-    setActiveReminderPopup(null)
-  }
+  const handleReminderClose = () => setActiveReminderPopup(null)
 
   const handleReminderDone = () => {
-    setActiveReminderPopup(null)
     toast.success("Lembrete concluído!")
+    setActiveReminderPopup(null)
   }
 
   const handleRemindIn5Minutes = () => {
     if (activeReminderPopup) {
-      setTimeout(
-        () => {
-          triggerReminder(activeReminderPopup)
-        },
-        5 * 60 * 1000,
-      )
-
-      toast.success("Lembrete reagendado para daqui a 5 minutos")
+      const newDataHora = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+      updateReminder(activeReminderPopup.id, {
+        ...activeReminderPopup,
+        dataHora: newDataHora,
+      })
+      toast.success("Reagendado para daqui a 5 minutos")
     }
     setActiveReminderPopup(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const normalizeDateTime = (value: string) => {
+    return value.length === 16 ? `${value}:00` : value
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingReminder) {
-      setReminders(
-        reminders.map((reminder) =>
-          reminder.id === editingReminder.id ? { ...reminder, ...formData, enabled: reminder.enabled } : reminder,
-        ),
-      )
-    } else {
-      const newReminder: Reminder = {
-        id: Date.now(),
-        ...formData,
-        enabled: true,
-      }
-      setReminders([...reminders, newReminder])
+
+    const payload = {
+      titulo: formData.titulo,
+      descricao: formData.descricao,
+      dataHora: normalizeDateTime(formData.dataHora),
+      ativo: formData.ativo,
     }
-    resetForm()
+
+    try {
+      if (editingReminder) {
+        await axios.put(`${API_BASE}/${editingReminder.id}`, payload, axiosConfig())
+        toast.success("Lembrete atualizado!")
+      } else {
+        await axios.post(API_BASE, payload, axiosConfig())
+        toast.success("Lembrete criado!")
+      }
+
+      resetForm()
+      loadReminders()
+    } catch {
+      toast.error("Erro ao salvar")
+    }
+  }
+
+  const updateReminder = async (id: number, updated: Reminder) => {
+    const payload = {
+      titulo: updated.titulo,
+      descricao: updated.descricao,
+      dataHora: updated.dataHora,
+      ativo: updated.ativo,
+    }
+
+    try {
+      await axios.put(`${API_BASE}/${id}`, payload, axiosConfig())
+      setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)))
+    } catch {
+      toast.error("Erro ao atualizar")
+    }
   }
 
   const resetForm = () => {
-    setFormData({
-      title: "",
-      message: "",
-      interval: 30,
-      intervalUnit: "minutes",
-      soundType: "default",
-      customSoundUrl: "",
-      linkToFocus: false,
-    })
+    setFormData({ titulo: "", descricao: "", dataHora: "", ativo: true })
     setEditingReminder(null)
     setIsDialogOpen(false)
   }
@@ -221,346 +195,287 @@ export default function RemindersPage() {
   const handleEdit = (reminder: Reminder) => {
     setEditingReminder(reminder)
     setFormData({
-      title: reminder.title,
-      message: reminder.message,
-      interval: reminder.interval,
-      intervalUnit: reminder.intervalUnit,
-      soundType: reminder.soundType,
-      customSoundUrl: reminder.customSoundUrl || "",
-      linkToFocus: reminder.linkToFocus,
+      titulo: reminder.titulo,
+      descricao: reminder.descricao,
+      dataHora: reminder.dataHora,
+      ativo: reminder.ativo,
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    stopReminderTimer(id)
-    setReminders(reminders.filter((reminder) => reminder.id !== id))
-  }
-
-  const toggleEnabled = (id: number) => {
-    setReminders(
-      reminders.map((reminder) => {
-        if (reminder.id === id) {
-          return { ...reminder, enabled: !reminder.enabled }
-        }
-        return reminder
-      }),
-    )
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setFormData({ ...formData, customSoundUrl: url, soundType: "custom" })
+  const handleDelete = async (id: number) => {
+    try {
+      await axios.delete(`${API_BASE}/${id}`, axiosConfig())
+      setReminders((prev) => prev.filter((r) => r.id !== id))
+      stopReminderTimer(id)
+      toast.success("Lembrete excluído!")
+    } catch {
+      toast.error("Erro ao excluir")
     }
   }
 
-  const getIntervalText = (reminder: Reminder) => {
-    return `A cada ${reminder.interval} ${reminder.intervalUnit === "hours" ? "hora(s)" : "minuto(s)"}`
+  const toggleEnabled = async (id: number, newState?: boolean) => {
+    const reminder = reminders.find((r) => r.id === id)
+    if (!reminder) return
+
+    const ativo = newState !== undefined ? newState : !reminder.ativo
+
+    const payload = {
+      titulo: reminder.titulo,
+      descricao: reminder.descricao,
+      dataHora: reminder.dataHora,
+      ativo,
+    }
+
+    try {
+      await axios.put(`${API_BASE}/${id}`, payload, axiosConfig())
+      setReminders((prev) => prev.map((r) => (r.id === id ? { ...r, ativo } : r)))
+      if (!ativo) stopReminderTimer(id)
+    } catch {
+      toast.error("Erro ao atualizar")
+    }
   }
 
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar />
+  const getIntervalText = (r: Reminder) =>
+      `Próximo: ${new Date(r.dataHora).toLocaleString("pt-BR")}`
 
-      <main className="flex-1 lg:pl-64">
-        <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <PageHeader
-              title="Lembretes"
-              description="Configure lembretes inteligentes para manter sua rotina"
-              action={
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => setEditingReminder(null)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Lembrete
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <form onSubmit={handleSubmit}>
-                      <DialogHeader>
-                        <DialogTitle>{editingReminder ? "Editar Lembrete" : "Novo Lembrete"}</DialogTitle>
-                        <DialogDescription>
-                          {editingReminder
-                            ? "Atualize as configurações do lembrete"
-                            : "Configure um novo lembrete personalizado"}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="title">Título</Label>
-                          <Input
-                            id="title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            placeholder="Ex: Beber água"
-                            required
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="message">Mensagem</Label>
-                          <Textarea
-                            id="message"
-                            value={formData.message}
-                            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                            placeholder="Ex: Hora de se hidratar!"
-                            rows={2}
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="interval">Intervalo</Label>
-                            <Input
-                              id="interval"
-                              type="number"
-                              min="1"
-                              value={formData.interval}
-                              onChange={(e) => setFormData({ ...formData, interval: Number.parseInt(e.target.value) })}
-                              required
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="intervalUnit">Unidade</Label>
-                            <Select
-                              value={formData.intervalUnit}
-                              onValueChange={(value) =>
-                                setFormData({ ...formData, intervalUnit: value as "minutes" | "hours" })
-                              }
-                            >
-                              <SelectTrigger id="intervalUnit">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="minutes">Minutos</SelectItem>
-                                <SelectItem value="hours">Horas</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="soundType">Som de Notificação</Label>
-                          <Select
-                            value={formData.soundType}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, soundType: value as "default" | "none" | "custom" })
-                            }
-                          >
-                            <SelectTrigger id="soundType">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">Som Padrão</SelectItem>
-                              <SelectItem value="none">Sem Som</SelectItem>
-                              <SelectItem value="custom">Som Personalizado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {formData.soundType === "custom" && (
-                          <div className="grid gap-2">
-                            <Label htmlFor="customSound">Upload de Áudio (.mp3, .wav)</Label>
-                            <div className="flex gap-2">
+  return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+
+        <main className="flex-1 lg:pl-64">
+          <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <PageHeader
+                  title="Lembretes"
+                  description="Configure lembretes inteligentes para manter sua rotina"
+                  action={
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button onClick={() => setEditingReminder(null)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Novo Lembrete
+                        </Button>
+                      </DialogTrigger>
+
+                      <DialogContent className="sm:max-w-[500px]">
+                        <form onSubmit={handleSubmit}>
+                          <DialogHeader>
+                            <DialogTitle>
+                              {editingReminder ? "Editar Lembrete" : "Novo Lembrete"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              {editingReminder
+                                  ? "Atualize o lembrete"
+                                  : "Crie um novo lembrete"}
+                            </DialogDescription>
+                          </DialogHeader>
+
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="titulo">Título</Label>
                               <Input
-                                id="customSound"
-                                type="file"
-                                accept=".mp3,.wav"
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                className="hidden"
+                                  id="titulo"
+                                  value={formData.titulo}
+                                  onChange={(e) =>
+                                      setFormData({ ...formData, titulo: e.target.value })
+                                  }
+                                  required
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full bg-transparent"
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                {formData.customSoundUrl ? "Áudio Carregado" : "Escolher Arquivo"}
-                              </Button>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="descricao">Descrição</Label>
+                              <Input
+                                  id="descricao"
+                                  value={formData.descricao}
+                                  onChange={(e) =>
+                                      setFormData({ ...formData, descricao: e.target.value })
+                                  }
+                                  placeholder="Descrição detalhada do lembrete"
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="dataHora">Data e Hora</Label>
+                              <Input
+                                  id="dataHora"
+                                  type="datetime-local"
+                                  value={formData.dataHora}
+                                  onChange={(e) =>
+                                      setFormData({ ...formData, dataHora: e.target.value })
+                                  }
+                                  required
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between border p-4 rounded-lg">
+                              <div>
+                                <Label>Ativo</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Ativar ou desativar lembrete
+                                </p>
+                              </div>
+
+                              <Switch
+                                  checked={formData.ativo}
+                                  onCheckedChange={(checked) =>
+                                      setFormData({ ...formData, ativo: checked })
+                                  }
+                              />
                             </div>
                           </div>
-                        )}
-                        <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="linkToFocus" className="text-sm font-medium">
-                              Vincular ao Modo Foco
-                            </Label>
-                            <p className="text-xs text-muted-foreground">Lembrar apenas durante sessões de foco</p>
-                          </div>
-                          <Switch
-                            id="linkToFocus"
-                            checked={formData.linkToFocus}
-                            onCheckedChange={(checked) => setFormData({ ...formData, linkToFocus: checked })}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="button" variant="outline" onClick={resetForm}>
-                          Cancelar
-                        </Button>
-                        <Button type="submit">{editingReminder ? "Atualizar" : "Criar"}</Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              }
-            />
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {reminders.map((reminder) => (
-                <Card key={reminder.id} className={!reminder.enabled ? "opacity-60" : ""}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                            reminder.enabled ? "bg-primary/10" : "bg-muted"
-                          }`}
-                        >
-                          <Bell className={`h-5 w-5 ${reminder.enabled ? "text-primary" : "text-muted-foreground"}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-lg mb-1">{reminder.title}</CardTitle>
-                          <p className="text-sm text-muted-foreground mb-2">{reminder.message}</p>
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="outline" className="text-xs">
+                          <DialogFooter>
+                            <Button variant="outline" onClick={resetForm}>
+                              Cancelar
+                            </Button>
+                            <Button type="submit">
+                              {editingReminder ? "Atualizar" : "Criar"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  }
+              />
+
+              {/* GRID */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {reminders.map((r) => (
+                    <Card key={r.id} className={!r.ativo ? "opacity-60" : ""}>
+                      <CardHeader>
+                        <div className="flex items-start gap-3">
+                          <div
+                              className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                                  r.ativo ? "bg-primary/10" : "bg-muted"
+                              }`}
+                          >
+                            <Bell
+                                className={`h-5 w-5 ${
+                                    r.ativo ? "text-primary" : "text-muted-foreground"
+                                }`}
+                            />
+                          </div>
+
+                          <div className="flex-1">
+                            <CardTitle>{r.titulo}</CardTitle>
+
+                            <Badge variant="outline" className="text-xs mt-1">
                               <Clock className="h-3 w-3 mr-1" />
-                              {getIntervalText(reminder)}
+                              {getIntervalText(r)}
                             </Badge>
-                            {reminder.soundType === "none" ? (
-                              <Badge variant="outline" className="text-xs">
-                                <VolumeX className="h-3 w-3 mr-1" />
-                                Sem som
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">
-                                <Volume2 className="h-3 w-3 mr-1" />
-                                {reminder.soundType === "custom" ? "Personalizado" : "Padrão"}
-                              </Badge>
-                            )}
-                            {reminder.linkToFocus && (
-                              <Badge variant="outline" className="text-xs bg-accent/10">
-                                Modo Foco
-                              </Badge>
-                            )}
                           </div>
-                          {reminder.lastTriggered && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Último: {new Date(reminder.lastTriggered).toLocaleTimeString("pt-BR")}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Switch checked={reminder.enabled} onCheckedChange={() => toggleEnabled(reminder.id)} />
-                        <span className="text-sm text-muted-foreground">
-                          {reminder.enabled ? "Ativado" : "Desativado"}
+                      </CardHeader>
+
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <div className="flex gap-2">
+                            <Switch
+                                checked={r.ativo}
+                                onCheckedChange={() => toggleEnabled(r.id)}
+                            />
+                            <span className="text-sm">
+                          {r.ativo ? "Ativado" : "Desativado"}
                         </span>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(reminder)}
-                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(reminder.id)}
-                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                          </div>
+
+                          <div className="flex gap-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(r)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(r.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                ))}
+              </div>
+
+              {reminders.length === 0 && (
+                  <Card className="mt-6">
+                    <CardContent className="py-12 text-center">
+                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhum lembrete configurado</p>
+                    </CardContent>
+                  </Card>
+              )}
             </div>
-
-            {reminders.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhum lembrete configurado</p>
-                  <p className="text-sm text-muted-foreground mt-1">Crie seu primeiro lembrete para começar</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
-        </div>
-      </main>
+        </main>
 
-      {activeReminderPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-card border-2 border-primary/50 rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-accent/20 animate-pulse ring-4 ring-primary/10">
-                  <Bell className="h-8 w-8 text-primary" />
+        {/* POPUP DE LEMBRETE */}
+        {activeReminderPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+              <div className="bg-card border-2 border-primary/50 rounded-3xl shadow-xl p-8 max-w-md w-full mx-4">
+                <div className="flex justify-between mb-6">
+                  <div className="flex gap-4 items-center">
+                    <div className="h-16 w-16 bg-primary/20 rounded-full flex items-center justify-center">
+                      <Bell className="h-8 w-8 text-primary" />
+                    </div>
+
+                    <div>
+                      <h3 className="text-2xl font-bold">
+                        {activeReminderPopup.titulo}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleReminderClose}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground mb-1">{activeReminderPopup.title}</h3>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" />
-                    {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+
+                <div className="p-5 rounded-xl bg-muted/40 border mb-6">
+                  Lembrete: {activeReminderPopup.titulo}
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Button
+                      onClick={handleReminderDone}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Concluído
+                  </Button>
+
+                  <Button
+                      onClick={handleRemindIn5Minutes}
+                      variant="outline"
+                      className="w-full"
+                  >
+                    <RotateCcw className="h-5 w-5 mr-2" />
+                    Adiar 5 min
+                  </Button>
+
+                  <Button
+                      onClick={handleReminderClose}
+                      variant="ghost"
+                      className="w-full"
+                  >
+                    <X className="h-5 w-5 mr-2" />
+                    Fechar
+                  </Button>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleReminderClose}
-                className="h-9 w-9 rounded-full hover:bg-muted shrink-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
-
-            <div className="mb-8 p-5 rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 border border-border/50">
-              <p className="text-foreground text-lg leading-relaxed">{activeReminderPopup.message}</p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={handleReminderDone}
-                size="lg"
-                className="w-full text-base font-semibold h-12 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 shadow-lg shadow-green-500/20"
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Concluído
-              </Button>
-              <Button
-                onClick={handleRemindIn5Minutes}
-                variant="outline"
-                size="lg"
-                className="w-full text-base font-semibold h-12 bg-transparent border-2 hover:bg-accent/10 hover:border-accent"
-              >
-                <RotateCcw className="h-5 w-5 mr-2" />
-                Adiar 5 min
-              </Button>
-              <Button
-                onClick={handleReminderClose}
-                variant="ghost"
-                size="lg"
-                className="w-full text-base font-semibold h-12 hover:bg-muted"
-              >
-                <X className="h-5 w-5 mr-2" />
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   )
 }

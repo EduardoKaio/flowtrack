@@ -1,18 +1,30 @@
 import { apiRequest } from "./config"
 
 /**
- * Pomodoro session interface
+ * Interface da RESPOSTA que o backend envia
+ * (Corresponde ao seu model FocusSession.java)
  */
-export interface FocusSession {
+export interface FocusSessionResponse {
   id: number
-  type: "focus" | "shortBreak" | "longBreak"
-  duration: number
-  completedAt: string
-  userId?: number
+  inicio: string
+  fim: string
+  duracaoMin: number
+  // adicione outros campos se seu model tiver (ex: pausada, tempoPausa)
 }
 
 /**
- * Pomodoro settings interface
+ * DTO para CRIAR uma nova sessão
+ * (Corresponde ao seu FocusSessionCreateDTO.java)
+ */
+export interface FocusSessionCreateDTO {
+  inicio: string
+  fim: string
+  duracaoMin: number
+}
+
+/**
+ * Interface para as Configurações
+ * (Corresponde ao seu FocusSettings.java e FocusSettingsDTO.java)
  */
 export interface PomodoroSettings {
   id?: number
@@ -23,51 +35,32 @@ export interface PomodoroSettings {
   userId?: number
 }
 
+// --- Funções da API Corrigidas ---
+
 /**
  * Get all focus sessions
- *
  * Endpoint: GET /api/focus/sessions
- *
- * Usage:
- * ```typescript
- * const sessions = await getAllSessions()
- * setSessions(sessions)
- * ```
  */
-export async function getAllSessions(): Promise<FocusSession[]> {
-  return apiRequest<FocusSession[]>("/focus/sessions")
+export async function getAllSessions(): Promise<FocusSessionResponse[]> {
+  // Agora espera a resposta correta do backend
+  return apiRequest<FocusSessionResponse[]>("/focus/sessions")
 }
 
 /**
  * Get sessions for a specific date
- *
  * Endpoint: GET /api/focus/sessions?date=2025-10-20
- *
- * Usage:
- * ```typescript
- * const todaySessions = await getSessionsByDate("2025-10-20")
- * ```
  */
-export async function getSessionsByDate(date: string): Promise<FocusSession[]> {
-  return apiRequest<FocusSession[]>(`/focus/sessions?date=${date}`)
+export async function getSessionsByDate(date: string): Promise<FocusSessionResponse[]> {
+  return apiRequest<FocusSessionResponse[]>(`/focus/sessions?date=${date}`)
 }
 
 /**
  * Create a new focus session
- *
  * Endpoint: POST /api/focus/sessions
- *
- * Usage:
- * ```typescript
- * const session = await createSession({
- *   type: "focus",
- *   duration: 25,
- *   completedAt: new Date().toISOString()
- * })
- * ```
  */
-export async function createSession(session: Omit<FocusSession, "id">): Promise<FocusSession> {
-  return apiRequest<FocusSession>("/focus/sessions", {
+export async function createSession(session: FocusSessionCreateDTO): Promise<FocusSessionResponse> {
+  // Agora aceita o DTO correto
+  return apiRequest<FocusSessionResponse>("/focus/sessions", {
     method: "POST",
     body: JSON.stringify(session),
   })
@@ -75,14 +68,7 @@ export async function createSession(session: Omit<FocusSession, "id">): Promise<
 
 /**
  * Get user's Pomodoro settings
- *
  * Endpoint: GET /api/focus/settings
- *
- * Usage:
- * ```typescript
- * const settings = await getPomodoroSettings()
- * setSettings(settings)
- * ```
  */
 export async function getPomodoroSettings(): Promise<PomodoroSettings> {
   return apiRequest<PomodoroSettings>("/focus/settings")
@@ -90,20 +76,10 @@ export async function getPomodoroSettings(): Promise<PomodoroSettings> {
 
 /**
  * Update Pomodoro settings
- *
  * Endpoint: PUT /api/focus/settings
- *
- * Usage:
- * ```typescript
- * const updatedSettings = await updatePomodoroSettings({
- *   focusTime: 25,
- *   shortBreakTime: 5,
- *   longBreakTime: 15,
- *   sessionsUntilLongBreak: 4
- * })
- * ```
  */
-export async function updatePomodoroSettings(settings: Omit<PomodoroSettings, "id">): Promise<PomodoroSettings> {
+export async function updatePomodoroSettings(settings: Omit<PomodoroSettings, "id" | "userId">): Promise<PomodoroSettings> {
+  // O DTO do backend não precisa de ID ou userId
   return apiRequest<PomodoroSettings>("/focus/settings", {
     method: "PUT",
     body: JSON.stringify(settings),
@@ -112,14 +88,7 @@ export async function updatePomodoroSettings(settings: Omit<PomodoroSettings, "i
 
 /**
  * Get focus statistics
- *
  * Endpoint: GET /api/focus/stats
- *
- * Usage:
- * ```typescript
- * const stats = await getFocusStats()
- * // Returns: { totalSessions: 10, totalMinutes: 250, todaySessions: 2 }
- * ```
  */
 export async function getFocusStats(): Promise<{
   totalSessions: number

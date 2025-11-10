@@ -23,16 +23,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
-
-interface Task {
-  id: number
-  title: string
-  description: string
-  category: string
-  priority: "baixa" | "média" | "alta"
-  dueDate: string
-  completed: boolean
-}
+import { Task, getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks } from "@/lib/api/tasks"
 
 const categories = [
   { id: "trabalho", name: "Trabalho", color: "bg-blue-500" },
@@ -42,49 +33,77 @@ const categories = [
   { id: "pessoal", name: "Pessoal", color: "bg-pink-500" },
 ]
 
+const PRIORITY_ID_MAP: Record<string, number> = {
+  "baixa": 0,
+  "media": 1,
+  "alta": 2
+}
+
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 1,
-      title: "Revisar relatório mensal",
-      description: "Analisar métricas e preparar apresentação",
-      category: "trabalho",
-      priority: "alta",
-      dueDate: "2025-10-16",
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Estudar React avançado",
-      description: "Completar módulo sobre hooks customizados",
-      category: "estudo",
-      priority: "média",
-      dueDate: "2025-10-17",
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Fazer exercícios físicos",
-      description: "30 minutos de corrida",
-      category: "saude",
-      priority: "alta",
-      dueDate: "2025-10-15",
-      completed: true,
-    },
-  ])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [size, setSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchList = async (pageLoad: number = page, sizeLoad: number = size) => {
+    const p = Math.max(0, pageLoad)
+    setLoading(true)
+
+    try {
+      let resp
+      if (searchQuery) {
+        resp = await searchTasks(searchQuery, { page: p, size: sizeLoad })
+      } else {
+        resp = await getAllTasks({ page: p, size: sizeLoad })
+      }
+
+      setTasks(resp.content)
+      setPage(resp.number)
+      setSize(resp.size)
+      setTotalPages(resp.totalPages)
+      setTotalElements(resp.totalElements)
+    } catch (err) {
+      console.error("Erro ao carregar tarefas:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchList(0)
+  }, [])
+
+  const fetchFilteredTasks = async () => {
+    if (!searchQuery) return
+    if (searchQuery.trim() === "") {
+      fetchList(0)
+      return
+    }
+
+    await fetchList(0)
+  }
+
+  const clearFilter = async () => {
+    setSearchQuery("")
+
+    await fetchList(0)
+  }
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>("todas")
   const [filterStatus, setFilterStatus] = useState<string>("todas")
-  const [searchQuery, setSearchQuery] = useState<string>("")
 
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "trabalho",
-    priority: "média" as "baixa" | "média" | "alta",
-    dueDate: "",
+    titulo: "",
+    descricao: "",
+    categoria: "trabalho",
+    prioridade: "media",
+    dataConclusao: "",
   })
 
   useEffect(() => {
@@ -95,64 +114,98 @@ export default function TasksPage() {
     }
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingTask) {
-      setTasks(tasks.map((task) => (task.id === editingTask.id ? { ...task, ...formData } : task)))
-    } else {
-      const newTask: Task = {
-        id: Date.now(),
-        ...formData,
-        completed: false,
-      }
+
+    try {
+
+      const newTask = await createTask({
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        categoria: "trabalho",
+        prioridade: PRIORITY_ID_MAP[formData.prioridade],
+        dataConclusao: formData.dataConclusao,
+        concluida: false,
+      })
+
       setTasks([...tasks, newTask])
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error)
     }
-    resetForm()
   }
 
   const resetForm = () => {
     setFormData({
-      title: "",
-      description: "",
-      category: "trabalho",
-      priority: "média",
-      dueDate: "",
+      titulo: "",
+      descricao: "",
+      categoria: "trabalho",
+      prioridade: "media",
+      dataConclusao: "",
     })
     setEditingTask(null)
     setIsDialogOpen(false)
   }
 
-  const handleEdit = (task: Task) => {
+  const startFormEdit = (task: Task) => {
     setEditingTask(task)
     setFormData({
-      title: task.title,
-      description: task.description,
-      category: task.category,
-      priority: task.priority,
-      dueDate: task.dueDate,
+      titulo: task.titulo,
+      descricao: task.descricao,
+      categoria: "trabalho",
+      prioridade: task.prioridade.toLocaleLowerCase(),
+      dataConclusao: task.dataConclusao,
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setTasks(tasks.filter((task) => task.id !== id))
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTask) return
+
+    try {
+      const payload = {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        categoria: "trabalho",
+        prioridade: PRIORITY_ID_MAP[formData.prioridade],
+        dataConclusao: formData.dataConclusao,
+      }
+
+      const updatedTask = await updateTask(editingTask.id, payload)
+      setTasks(tasks.map(t => t.id === editingTask.id ? updatedTask : t))
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao atualizar tarefa:", error)
+    }
   }
 
-  const toggleComplete = (id: number) => {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
+  const handleDelete = async (taskId: number) => {
+    try {
+      await deleteTask(taskId)
+      setTasks(tasks.filter(t => t.id !== taskId))
+    } catch (error) {
+      console.error("Erro ao deletar tarefa:", error)
+    }
   }
 
+  const toggleComplete = async (id: number) => {
+    try {
+      await toggleTaskCompletion(id)
+      setTasks(tasks.map(t => t.id === id ? { ...t, concluida: !t.concluida } : t))
+    } catch (error) {
+      console.error("Erro ao deletar tarefa:", error)
+    }
+  }
+
+  // Filtro local agora só para categoria e status
   const filteredTasks = tasks.filter((task) => {
-    const categoryMatch = filterCategory === "todas" || task.category === filterCategory
+    const categoryMatch = filterCategory === "todas" || task.categoria === filterCategory
     const statusMatch =
       filterStatus === "todas" ||
-      (filterStatus === "concluidas" && task.completed) ||
-      (filterStatus === "pendentes" && !task.completed)
-    const searchMatch =
-      searchQuery === "" ||
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchQuery.toLowerCase())
-    return categoryMatch && statusMatch && searchMatch
+      (filterStatus === "concluidas" && task.concluida) ||
+      (filterStatus === "pendentes" && !task.concluida)
+    return categoryMatch && statusMatch
   })
 
   const getCategoryColor = (categoryId: string) => {
@@ -165,11 +218,11 @@ export default function TasksPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "alta":
+      case "ALTA":
         return "bg-red-500/10 text-red-700 border-red-200"
-      case "média":
+      case "MEDIA":
         return "bg-yellow-500/10 text-yellow-700 border-yellow-200"
-      case "baixa":
+      case "BAIXA":
         return "bg-green-500/10 text-green-700 border-green-200"
       default:
         return "bg-gray-500/10 text-gray-700 border-gray-200"
@@ -195,7 +248,7 @@ export default function TasksPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={editingTask ? handleUpdate : handleSubmit}>
                       <DialogHeader>
                         <DialogTitle>{editingTask ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
                         <DialogDescription>
@@ -207,8 +260,8 @@ export default function TasksPage() {
                           <Label htmlFor="title">Título</Label>
                           <Input
                             id="title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            value={formData.titulo}
+                            onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                             required
                           />
                         </div>
@@ -216,8 +269,8 @@ export default function TasksPage() {
                           <Label htmlFor="description">Descrição</Label>
                           <Textarea
                             id="description"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            value={formData.descricao}
+                            onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                             rows={3}
                           />
                         </div>
@@ -225,8 +278,8 @@ export default function TasksPage() {
                           <div className="grid gap-2">
                             <Label htmlFor="category">Categoria</Label>
                             <Select
-                              value={formData.category}
-                              onValueChange={(value) => setFormData({ ...formData, category: value })}
+                              value={formData.categoria}
+                              onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                             >
                               <SelectTrigger id="category">
                                 <SelectValue />
@@ -243,9 +296,9 @@ export default function TasksPage() {
                           <div className="grid gap-2">
                             <Label htmlFor="priority">Prioridade</Label>
                             <Select
-                              value={formData.priority}
+                              value={formData.prioridade}
                               onValueChange={(value) =>
-                                setFormData({ ...formData, priority: value as "baixa" | "média" | "alta" })
+                                setFormData({ ...formData, prioridade: value })
                               }
                             >
                               <SelectTrigger id="priority">
@@ -253,7 +306,7 @@ export default function TasksPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="baixa">Baixa</SelectItem>
-                                <SelectItem value="média">Média</SelectItem>
+                                <SelectItem value="media">Média</SelectItem>
                                 <SelectItem value="alta">Alta</SelectItem>
                               </SelectContent>
                             </Select>
@@ -264,8 +317,8 @@ export default function TasksPage() {
                           <Input
                             id="dueDate"
                             type="date"
-                            value={formData.dueDate}
-                            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                            value={formData.dataConclusao}
+                            onChange={(e) => setFormData({ ...formData, dataConclusao: e.target.value })}
                             required
                           />
                         </div>
@@ -372,14 +425,14 @@ export default function TasksPage() {
                 </Card>
               ) : (
                 filteredTasks.map((task) => (
-                  <Card key={task.id} className={task.completed ? "opacity-60" : ""}>
+                  <Card key={task.id} className={task.concluida ? "opacity-60" : ""}>
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <button
                           onClick={() => toggleComplete(task.id)}
                           className="mt-1 shrink-0 hover:scale-110 transition-transform"
                         >
-                          {task.completed ? (
+                          {task.concluida ? (
                             <CheckCircle2 className="h-6 w-6 text-primary" />
                           ) : (
                             <Circle className="h-6 w-6 text-muted-foreground" />
@@ -388,17 +441,16 @@ export default function TasksPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-4 mb-2">
                             <h3
-                              className={`text-lg font-semibold ${
-                                task.completed ? "line-through text-muted-foreground" : "text-foreground"
-                              }`}
+                              className={`text-lg font-semibold ${task.concluida ? "line-through text-muted-foreground" : "text-foreground"
+                                }`}
                             >
-                              {task.title}
+                              {task.titulo}
                             </h3>
                             <div className="flex gap-2 shrink-0">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleEdit(task)}
+                                onClick={() => startFormEdit(task)}
                                 className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                               >
                                 <Edit className="h-4 w-4" />
@@ -413,18 +465,18 @@ export default function TasksPage() {
                               </Button>
                             </div>
                           </div>
-                          {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
+                          {task.descricao && <p className="text-sm text-muted-foreground mb-3">{task.descricao}</p>}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className={getCategoryColor(task.category)}>
-                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.category)} mr-1.5`} />
-                              {getCategoryName(task.category)}
+                            <Badge variant="outline" className={getCategoryColor(task.categoria)}>
+                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.categoria)} mr-1.5`} />
+                              {getCategoryName(task.categoria)}
                             </Badge>
-                            <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            <Badge variant="outline" className={getPriorityColor(task.prioridade)}>
+                              {task.prioridade.charAt(0).toUpperCase() + task.prioridade.slice(1)}
                             </Badge>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3.5 w-3.5" />
-                              {new Date(task.dueDate).toLocaleDateString("pt-BR")}
+                              {new Date(task.dataConclusao).toLocaleDateString("pt-BR")}
                             </div>
                           </div>
                         </div>
@@ -433,6 +485,46 @@ export default function TasksPage() {
                   </Card>
                 ))
               )}
+            </div>
+            {/* Paginação */}
+            <div className="flex justify-center items-center gap-2 pt-4 border-t border-border">
+             
+              <Button
+                variant="outline"
+                onClick={() => fetchList(page - 1, size)}
+                disabled={loading || page <= 0}
+              >
+                Anterior
+              </Button>
+
+              {totalPages > 0 && (() => {
+                const windowSize = 5 
+                const start = Math.max(0, Math.min(page - Math.floor(windowSize / 2), Math.max(0, totalPages - windowSize)))
+                const end = Math.min(totalPages, start + windowSize)
+                const buttons = []
+                for (let i = start; i < end; i++) {
+                  buttons.push(
+                    <Button
+                      key={i}
+                      variant={i === page ? "default" : "outline"}
+                      className={i === page ? "border-primary" : ""}
+                      onClick={() => fetchList(i, size)}
+                      disabled={loading}
+                    >
+                      {i + 1}
+                    </Button>
+                  )
+                }
+                return buttons
+              })()}
+
+              <Button
+                variant="outline"
+                onClick={() => fetchList(page + 1, size)}
+                disabled={loading || page + 1 >= totalPages}
+              >
+                Próximo
+              </Button>
             </div>
           </div>
         </div>

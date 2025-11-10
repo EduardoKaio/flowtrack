@@ -1,18 +1,29 @@
 import { apiRequest } from "./config"
+import { getPage, getPageByDateRange, getTasksByQuery } from "../page"
 
 /**
  * Task interface matching the backend model
  */
 export interface Task {
   id: number
-  title: string
-  description: string
-  category: string
-  priority: "baixa" | "média" | "alta"
-  dueDate: string
-  completed: boolean
+  titulo: string
+  descricao: string
+  categoria: string
+  prioridade: string
+  dataConclusao: string
+  concluida: boolean
+  userId?: number 
   createdAt?: string
   updatedAt?: string
+}
+
+export interface ResponseTaskDTO {
+  titulo: string
+  descricao: string
+  categoria: string
+  prioridade: number
+  dataConclusao: string
+  concluida: boolean
 }
 
 /**
@@ -26,8 +37,12 @@ export interface Task {
  * setTasks(tasks)
  * ```
  */
-export async function getAllTasks(): Promise<Task[]> {
-  return apiRequest<Task[]>("/tasks")
+export async function getAllTasks( params?: {
+  page?: number
+  size?: number
+  sort?: string
+}) {
+  return getPage<Task>("/tasks",  params)
 }
 
 /**
@@ -61,7 +76,7 @@ export async function getTaskById(id: number): Promise<Task> {
  * })
  * ```
  */
-export async function createTask(task: Omit<Task, "id">): Promise<Task> {
+export async function createTask(task: ResponseTaskDTO): Promise<Task> {
   return apiRequest<Task>("/tasks", {
     method: "POST",
     body: JSON.stringify(task),
@@ -81,7 +96,7 @@ export async function createTask(task: Omit<Task, "id">): Promise<Task> {
  * })
  * ```
  */
-export async function updateTask(id: number, task: Partial<Task>): Promise<Task> {
+export async function updateTask(id: number, task: Partial<ResponseTaskDTO>): Promise<Task> {
   return apiRequest<Task>(`/tasks/${id}`, {
     method: "PUT",
     body: JSON.stringify(task),
@@ -118,4 +133,21 @@ export async function toggleTaskCompletion(id: number): Promise<Task> {
   return apiRequest<Task>(`/tasks/${id}/toggle`, {
     method: "PATCH",
   })
+}
+
+// export async function searchTasks(query: string): Promise<Task[]> {
+//   // Usa o mesmo valor para título e descrição para busca simples
+//   const params = new URLSearchParams({
+//     titulo: query,
+//     descricao: query,
+//   });
+//   const pageable = await apiRequest<{ content: Task[] }>(`/tasks/search?${params.toString()}`);
+//   return pageable.content;
+// }
+
+export async function searchTasks(
+  query: string,
+  params?: { page?: number; size?: number; sort?: string }
+) {
+  return getTasksByQuery<Task>("/tasks", query, params)
 }

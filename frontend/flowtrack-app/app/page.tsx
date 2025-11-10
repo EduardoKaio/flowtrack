@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Circle, Clock, Smile, Target, Zap, Plus, Timer, Heart, BarChart3 } from "lucide-react"
+import { CheckCircle2, Circle, Clock, Smile, Target, Zap, Plus, Timer, Heart, BarChart3, Loader2 } from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -23,10 +23,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getDashboardStats, type DashboardStats, type TaskDTO } from "@/lib/api/dashboard"
+
 
 export default function DashboardPage() {
   const router = useRouter()
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false)
+  const [dashboardData, setDashboardData] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
   const [taskFormData, setTaskFormData] = useState({
     title: "",
     description: "",
@@ -34,24 +39,21 @@ export default function DashboardPage() {
     category: "trabalho",
   })
 
-  const todayStats = {
-    tasksCompleted: 8,
-    tasksTotal: 12,
-    focusTime: 145,
-    habitsCompleted: 5,
-    habitsTotal: 7,
-    mood: "Ótimo",
-  }
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        const stats = await getDashboardStats();
+        setDashboardData(stats);
+      } catch (error) {
+        console.error("Erro ao buscar dados do dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const todayTasks = [
-    { id: 1, title: "Revisar relatório mensal", completed: true, category: "Trabalho" },
-    { id: 2, title: "Estudar React avançado", completed: true, category: "Estudo" },
-    { id: 3, title: "Fazer exercícios físicos", completed: false, category: "Saúde" },
-    { id: 4, title: "Ler 30 páginas do livro", completed: false, category: "Lazer" },
-  ]
-
-  const tasksProgress = (todayStats.tasksCompleted / todayStats.tasksTotal) * 100
-  const habitsProgress = (todayStats.habitsCompleted / todayStats.habitsTotal) * 100
+    fetchDashboardData();
+  }, []); 
 
   const handleQuickTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,6 +75,28 @@ export default function DashboardPage() {
   const handleRegisterMood = () => {
     localStorage.setItem("openMoodDialog", "true")
     router.push("/bem-estar")
+  }
+
+  const tasksCompleted = dashboardData?.tasksCompletedToday ?? 0;
+  const tasksTotal = dashboardData?.tasksTotalToday ?? 0;
+  const tasksProgress = tasksTotal > 0 ? (tasksCompleted / tasksTotal) * 100 : 0;
+
+  const focusTime = dashboardData?.focusTimeToday ?? 0;
+  const focusSessions = dashboardData?.focusSessionsToday ?? 0;
+
+  const habitsCompleted = 5; 
+  const habitsTotal = 10;
+  const habitsProgress = habitsTotal > 0 ? (habitsCompleted / habitsTotal) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -213,21 +237,23 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-foreground">
-                    {todayStats.tasksCompleted}/{todayStats.tasksTotal}
+                    {tasksCompleted}/{tasksTotal}
                   </div>
                   <Progress value={tasksProgress} className="mt-3" />
                   <p className="text-xs text-muted-foreground mt-2">{Math.round(tasksProgress)}% do dia completo</p>
                 </CardContent>
               </Card>
 
-              <Card>
+             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Tempo Focado</CardTitle>
                   <Clock className="h-5 w-5 text-secondary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-foreground">{todayStats.focusTime}min</div>
-                  <p className="text-xs text-muted-foreground mt-2">~6 sessões Pomodoro</p>
+                  <div className="text-3xl font-bold text-foreground">{focusTime}min</div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {focusSessions} {focusSessions === 1 ? "sessão" : "sessões"} Pomodoro hoje
+                  </p>
                 </CardContent>
               </Card>
 
@@ -238,7 +264,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-foreground">
-                    {todayStats.habitsCompleted}/{todayStats.habitsTotal}
+                    {habitsCompleted}/{habitsTotal}
                   </div>
                   <Progress value={habitsProgress} className="mt-3" />
                   <p className="text-xs text-muted-foreground mt-2">Continue assim! 🔥</p>
@@ -256,28 +282,34 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {todayTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-start gap-3 rounded-lg border border-border p-3 hover:bg-accent/5 hover:border-accent/30 transition-colors"
-                      >
-                        {task.completed ? (
-                          <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                        ) : (
-                          <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm font-medium ${
-                              task.completed ? "line-through text-muted-foreground" : "text-foreground"
-                            }`}
-                          >
-                            {task.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">{task.category}</p>
+                    {dashboardData && dashboardData.todayTasks.length > 0 ? (
+                      dashboardData.todayTasks.map((task: TaskDTO) => (
+                        <div
+                          key={task.id}
+                          className="flex items-start gap-3 rounded-lg border border-border p-3 hover:bg-accent/5 hover:border-accent/30 transition-colors"
+                        >
+                          {task.concluida ? ( 
+                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-sm font-medium ${
+                                task.concluida ? "line-through text-muted-foreground" : "text-foreground"
+                              }`}
+                            >
+                              {task.titulo} 
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{task.categoria}</p> {/* 'category' mudou para 'categoria' */}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhuma tarefa para hoje. Que tal adicionar uma?
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -290,15 +322,33 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <div className="text-6xl mb-4">😊</div>
-                    <p className="text-2xl font-semibold text-foreground mb-2">{todayStats.mood}</p>
-                    <p className="text-sm text-muted-foreground">Você está tendo um ótimo dia!</p>
-                  </div>
-                  <div className="mt-6 p-4 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="text-sm text-foreground font-medium mb-1">💡 Sugestão de autocuidado</p>
-                    <p className="text-sm text-muted-foreground">Que tal fazer uma pausa de 5 minutos para alongar?</p>
-                  </div>
+                  {dashboardData && dashboardData.currentMood !== "Não registrado" ? (
+                    <>
+                      <div className="text-center py-8">
+                    
+                        <div className="text-6xl mb-4">{dashboardData.currentMoodEmoji}</div> 
+                        <p className="text-2xl font-semibold text-foreground mb-2 capitalize">
+                          {dashboardData.currentMood.toLowerCase()} 
+                        </p>
+                        <p className="text-sm text-muted-foreground">Você registrou seu humor hoje.</p>
+                      </div>
+                      <div className="mt-6 p-4 rounded-lg bg-accent/10 border border-accent/20">
+                        <p className="text-sm text-foreground font-medium mb-1">💡 Sugestão de autocuidado</p>
+                        <p className="text-sm text-muted-foreground">Que tal fazer uma pausa de 5 minutos para alongar?</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-6xl mb-4">🤔</div>
+                      <p className="text-2xl font-semibold text-foreground mb-2">Não registrado</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Você ainda não registrou seu humor hoje.
+                      </p>
+                      <Button variant="outline" onClick={handleRegisterMood}>
+                        Registrar Humor
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
