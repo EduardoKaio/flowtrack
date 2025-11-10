@@ -1,144 +1,65 @@
 import { apiRequest } from "./config"
 
-/**
- * Habit interface matching the backend model
- */
-export interface Habit {
-  id: number
-  name: string
-  description: string
-  frequency: "diario" | "semanal"
-  goal: number
-  icon: string
-  color: string
-  createdAt?: string
-  updatedAt?: string
-}
-
-/**
- * Habit progress interface
- */
-export interface HabitProgress {
+export interface ProgressoHabito {
   habitId: number
-  completedDays: string[]
-  currentStreak: number
-  bestStreak: number
+  diasConcluidos: string[]
+  sequenciaAtual: number
+  melhorSequencia: number
 }
 
-/**
- * Get all habits
- *
- * Endpoint: GET /api/habits
- *
- * Usage:
- * ```typescript
- * const habits = await getAllHabits()
- * setHabits(habits)
- * ```
- */
-export async function getAllHabits(): Promise<Habit[]> {
-  return apiRequest<Habit[]>("/habits")
+export interface Habito {
+  id: number
+  nome: string
+  descricao: string
+  meta: number
+  tipoFrequencia: "DIARIO" | "SEMANAL"
+  cor: string
+  icone: string
+  progresso: ProgressoHabito
 }
 
-/**
- * Get a single habit by ID
- *
- * Endpoint: GET /api/habits/{id}
- *
- * Usage:
- * ```typescript
- * const habit = await getHabitById(1)
- * ```
- */
-export async function getHabitById(id: number): Promise<Habit> {
-  return apiRequest<Habit>(`/habits/${id}`)
+export interface HabitCreateRequest extends Omit<Habito, "id" | "progresso"> {}
+
+export async function getHabits(): Promise<Habito[]> {
+  return apiRequest<Habito[]>("/habits", {
+    method: "GET",
+  })
 }
 
-/**
- * Create a new habit
- *
- * Endpoint: POST /api/habits
- *
- * Usage:
- * ```typescript
- * const newHabit = await createHabit({
- *   name: "Exercícios",
- *   description: "30 minutos diários",
- *   frequency: "diario",
- *   goal: 7,
- *   icon: "💪",
- *   color: "bg-green-500"
- * })
- * ```
- */
-export async function createHabit(habit: Omit<Habit, "id" | "createdAt" | "updatedAt">): Promise<Habit> {
-  return apiRequest<Habit>("/habits", {
+export async function getHabitById(habitId: number): Promise<Habito> {
+  return apiRequest<Habito>(`/habits/${habitId}`, {
+    method: "GET",
+  })
+}
+
+export async function createHabit(dto: HabitCreateRequest): Promise<Habito> {
+  return apiRequest<Habito>("/habits", {
     method: "POST",
-    body: JSON.stringify(habit),
+    body: JSON.stringify(dto),
   })
 }
 
-/**
- * Update an existing habit
- *
- * Endpoint: PUT /api/habits/{id}
- *
- * Usage:
- * ```typescript
- * const updatedHabit = await updateHabit(1, {
- *   name: "Exercícios Atualizados"
- * })
- * ```
- */
-export async function updateHabit(id: number, habit: Partial<Habit>): Promise<Habit> {
-  return apiRequest<Habit>(`/habits/${id}`, {
+export async function editHabit(habitId: number, dto: Partial<HabitCreateRequest>): Promise<Habito> {
+  return apiRequest<Habito>(`/habits/${habitId}`, {
     method: "PUT",
-    body: JSON.stringify(habit),
+    body: JSON.stringify(dto),
   })
 }
 
-/**
- * Delete a habit
- *
- * Endpoint: DELETE /api/habits/{id}
- *
- * Usage:
- * ```typescript
- * await deleteHabit(1)
- * ```
- */
-export async function deleteHabit(id: number): Promise<void> {
-  return apiRequest<void>(`/habits/${id}`, {
+export async function deleteHabit(habitId: number): Promise<void> {
+  return apiRequest<void>(`/habits/${habitId}`, {
     method: "DELETE",
   })
 }
 
-/**
- * Get habit progress
- *
- * Endpoint: GET /api/habits/{id}/progress
- *
- * Usage:
- * ```typescript
- * const progress = await getHabitProgress(1)
- * ```
- */
-export async function getHabitProgress(id: number): Promise<HabitProgress> {
-  return apiRequest<HabitProgress>(`/habits/${id}/progress`)
+export async function addCompleteDay(habitId: number): Promise<ProgressoHabito> {
+  return apiRequest<ProgressoHabito>(`/habits/${habitId}/completar-dia`, {
+    method: "POST",
+  })
 }
 
-/**
- * Toggle habit completion for today
- *
- * Endpoint: POST /api/habits/{id}/toggle
- *
- * Usage:
- * ```typescript
- * const progress = await toggleHabitToday(1)
- * ```
- */
-export async function toggleHabitToday(id: number): Promise<HabitProgress> {
-  return apiRequest<HabitProgress>(`/habits/${id}/toggle`, {
-    method: "POST",
+export async function getHabitProgress(habitId: number): Promise<ProgressoHabito> {
+  return apiRequest<ProgressoHabito>(`/habits/${habitId}/progresso`, {
+    method: "GET",
   })
 }
