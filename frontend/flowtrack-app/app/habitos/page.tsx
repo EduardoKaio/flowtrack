@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,12 +22,14 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit, Target, CheckCircle2, Circle, Flame } from "lucide-react"
+import { getHabits, ProgressoHabito, Habito, HabitCreateRequest, createHabit, deleteHabit, editHabit, addCompleteDay } from "@/lib/api"
+import { set } from "date-fns"
 
 interface Habit {
   id: number
   name: string
   description: string
-  frequency: "diario" | "semanal"
+  frequency: "DIARIO" | "SEMANAL"
   goal: number
   icon: string
   color: string
@@ -63,96 +65,112 @@ const colorOptions = [
 ]
 
 export default function HabitsPage() {
-  const [habits, setHabits] = useState<Habit[]>([
-    {
-      id: 1,
-      name: "Exercícios Físicos",
-      description: "30 minutos de atividade física",
-      frequency: "diario",
-      goal: 7,
-      icon: "💪",
-      color: "bg-green-500",
-    },
-    {
-      id: 2,
-      name: "Ler 30 páginas",
-      description: "Leitura diária para desenvolvimento",
-      frequency: "diario",
-      goal: 7,
-      icon: "📚",
-      color: "bg-purple-500",
-    },
-    {
-      id: 3,
-      name: "Meditar",
-      description: "10 minutos de meditação",
-      frequency: "diario",
-      goal: 7,
-      icon: "🧘",
-      color: "bg-blue-500",
-    },
-  ])
+  const [habits, setHabits] = useState<Habit[]>([])
+  const [habitos, setHabitos] = useState<Habito[]>([])
 
-  const [progress, setProgress] = useState<HabitProgress[]>([
-    {
-      habitId: 1,
-      completedDays: ["2025-10-13", "2025-10-14", "2025-10-15"],
-      currentStreak: 3,
-      bestStreak: 5,
-    },
-    {
-      habitId: 2,
-      completedDays: ["2025-10-14", "2025-10-15"],
-      currentStreak: 2,
-      bestStreak: 7,
-    },
-    {
-      habitId: 3,
-      completedDays: ["2025-10-15"],
-      currentStreak: 1,
-      bestStreak: 4,
-    },
-  ])
+  const [progress, setProgress] = useState<HabitProgress[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    frequency: "diario" as "diario" | "semanal",
+    frequency: "DIARIO" as "DIARIO" | "SEMANAL",
     goal: 7,
     icon: "🎯",
     color: "bg-blue-500",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingHabit) {
-      setHabits(habits.map((habit) => (habit.id === editingHabit.id ? { ...habit, ...formData } : habit)))
-    } else {
-      const newHabit: Habit = {
-        id: Date.now(),
-        ...formData,
-      }
-      setHabits([...habits, newHabit])
-      setProgress([
-        ...progress,
-        {
-          habitId: newHabit.id,
-          completedDays: [],
-          currentStreak: 0,
-          bestStreak: 0,
-        },
-      ])
+  async function loadHabits() {
+    try {
+      const response = await getHabits();
+      setHabitos(response);
+      console.log("Habits loaded:", response);
+    } catch (error) {
+      console.error("Error loading habits:", error)
     }
-    resetForm()
+  }
+
+  function divideHabitsAndProgress(habitos: Habito[]) {
+    const loadedHabits: Habit[] = habitos.map((habito) => ({
+      id: habito.id,
+      name: habito.nome,
+      description: habito.descricao,
+      frequency: habito.tipoFrequencia,
+      goal: habito.meta,
+      icon: habito.icone,
+      color: habito.cor,
+    }))
+    const loadedProgress: HabitProgress[] = habitos.map((habito) => ({
+      habitId: habito.id,
+      completedDays: habito.progresso.diasConcluidos,
+      currentStreak: habito.progresso.sequenciaAtual,
+      bestStreak: habito.progresso.melhorSequencia,
+    }))
+    setHabits(loadedHabits)
+    setProgress(loadedProgress)
+  }
+
+  useEffect(() => {
+    loadHabits()
+  }, [])
+
+  useEffect(() => {
+    divideHabitsAndProgress(habitos)
+  }, [habitos])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      if (editingHabit) {
+          await editHabit(editingHabit.id, {
+            nome: formData.name,
+            descricao: formData.description,
+            tipoFrequencia: formData.frequency,
+            meta: formData.goal,
+            icone: formData.icon,
+            cor: formData.color,
+          })
+        setHabits((prev) =>
+          prev.map((habit) =>
+            habit.id === editingHabit.id ? { ...habit, ...formData } : habit,
+          )
+        )
+      } else {
+        const createRequest: HabitCreateRequest = {
+          nome: formData.name,
+          descricao: formData.description,
+          tipoFrequencia: formData.frequency,
+          meta: formData.goal,
+          icone: formData.icon,
+          cor: formData.color,
+        }
+        const newHabit = await createHabit(createRequest)
+
+        setHabitos((prev) => [...prev, newHabit])
+        setProgress((prev) => [
+          ...prev,
+          {
+            habitId: newHabit.id,
+            completedDays: [],
+            currentStreak: 0,
+            bestStreak: 0,
+          },
+        ])
+      }
+
+      resetForm()
+    } catch (error) {
+      console.error("Error saving habit:", error)
+    }
   }
 
   const resetForm = () => {
     setFormData({
       name: "",
       description: "",
-      frequency: "diario",
+      frequency: "DIARIO",
       goal: 7,
       icon: "🎯",
       color: "bg-blue-500",
@@ -174,33 +192,25 @@ export default function HabitsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setHabits(habits.filter((habit) => habit.id !== id))
-    setProgress(progress.filter((p) => p.habitId !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteHabit(id);
+      setHabitos((prev) => prev.filter((habito) => habito.id !== id));
+      setProgress((prev) => prev.filter((p) => p.habitId !== id));
+    } catch (error) {
+      console.error("Error deleting habit:", error)
+    }
   }
 
-  const toggleHabitToday = (habitId: number) => {
-    const today = new Date().toISOString().split("T")[0]
-    setProgress(
-      progress.map((p) => {
-        if (p.habitId === habitId) {
-          const isCompleted = p.completedDays.includes(today)
-          const newCompletedDays = isCompleted
-            ? p.completedDays.filter((day) => day !== today)
-            : [...p.completedDays, today]
+  const toggleHabitToday = async (habitId: number) => {
 
-          const newStreak = isCompleted ? Math.max(0, p.currentStreak - 1) : p.currentStreak + 1
-
-          return {
-            ...p,
-            completedDays: newCompletedDays,
-            currentStreak: newStreak,
-            bestStreak: Math.max(p.bestStreak, newStreak),
-          }
-        }
-        return p
-      }),
-    )
+    try {
+      await addCompleteDay(habitId);
+      console.log("Habit marked as completed for today:", progress);
+    } catch (error) {
+      console.error("Error toggling habit for today:", error)
+    }
+    loadHabits()
   }
 
   const getHabitProgress = (habitId: number) => {
@@ -282,15 +292,15 @@ export default function HabitsPage() {
                           <Select
                             value={formData.frequency}
                             onValueChange={(value) =>
-                              setFormData({ ...formData, frequency: value as "diario" | "semanal" })
+                              setFormData({ ...formData, frequency: value as "DIARIO" | "SEMANAL" })
                             }
                           >
                             <SelectTrigger id="frequency">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="diario">Diário</SelectItem>
-                              <SelectItem value="semanal">Semanal</SelectItem>
+                              <SelectItem value="DIARIO">Diário</SelectItem>
+                              <SelectItem value="SEMANAL">Semanal</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -389,7 +399,7 @@ export default function HabitsPage() {
                             <CardTitle className="text-xl">{habit.name}</CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">{habit.description}</p>
                             <div className="flex items-center gap-3 mt-2">
-                              <Badge variant="outline">{habit.frequency === "diario" ? "Diário" : "Semanal"}</Badge>
+                              <Badge variant="outline">{habit.frequency === "DIARIO" ? "Diário" : "Semanal"}</Badge>
                               <div className="flex items-center gap-1.5 text-sm">
                                 <Flame className="h-4 w-4 text-orange-500" />
                                 <span className="font-semibold">{habitProgress?.currentStreak || 0}</span>

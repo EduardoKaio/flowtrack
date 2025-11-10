@@ -1,5 +1,7 @@
 package com.flowtrack.flowtrack.model;
 
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
