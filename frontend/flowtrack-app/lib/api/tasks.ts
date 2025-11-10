@@ -8,7 +8,7 @@ export interface Task {
   id: number
   titulo: string
   descricao: string
-  categoria: string
+  categoriaId: number
   prioridade: string
   dataConclusao: string
   concluida: boolean
@@ -17,10 +17,16 @@ export interface Task {
   updatedAt?: string
 }
 
+export interface Category {
+  id: number,
+  name: string,
+  color: string
+}
+
 export interface ResponseTaskDTO {
   titulo: string
   descricao: string
-  categoria: string
+  categoriaId: number | undefined
   prioridade: number
   dataConclusao: string
   concluida: boolean

@@ -23,15 +23,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
-import { Task, getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks } from "@/lib/api/tasks"
-
-const categories = [
-  { id: "trabalho", name: "Trabalho", color: "bg-blue-500" },
-  { id: "estudo", name: "Estudo", color: "bg-purple-500" },
-  { id: "saude", name: "Saúde", color: "bg-green-500" },
-  { id: "lazer", name: "Lazer", color: "bg-orange-500" },
-  { id: "pessoal", name: "Pessoal", color: "bg-pink-500" },
-]
+import { Task, getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks, Category } from "@/lib/api/tasks"
+import { getCategories } from "@/lib/api"
 
 const PRIORITY_ID_MAP: Record<string, number> = {
   "baixa": 0,
@@ -48,6 +41,7 @@ export default function TasksPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
 
   const fetchList = async (pageLoad: number = page, sizeLoad: number = size) => {
     const p = Math.max(0, pageLoad)
@@ -55,6 +49,8 @@ export default function TasksPage() {
 
     try {
       let resp
+      let respCategories
+      respCategories = await getCategories(1);
       if (searchQuery) {
         resp = await searchTasks(searchQuery, { page: p, size: sizeLoad })
       } else {
@@ -66,6 +62,7 @@ export default function TasksPage() {
       setSize(resp.size)
       setTotalPages(resp.totalPages)
       setTotalElements(resp.totalElements)
+      setCategories(respCategories);
     } catch (err) {
       console.error("Erro ao carregar tarefas:", err)
     } finally {
@@ -119,10 +116,12 @@ export default function TasksPage() {
 
     try {
 
+      let selectedCategory = categories.find(c => c.name === formData.categoria);
+
       const newTask = await createTask({
         titulo: formData.titulo,
         descricao: formData.descricao,
-        categoria: "trabalho",
+        categoriaId: selectedCategory?.id,
         prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
         concluida: false,
@@ -200,7 +199,10 @@ export default function TasksPage() {
 
   // Filtro local agora só para categoria e status
   const filteredTasks = tasks.filter((task) => {
-    const categoryMatch = filterCategory === "todas" || task.categoria === filterCategory
+
+    const selectedCategory = categories.find(c => c.name === filterCategory);
+
+    const categoryMatch = filterCategory === "todas" || task.categoriaId === selectedCategory?.id
     const statusMatch =
       filterStatus === "todas" ||
       (filterStatus === "concluidas" && task.concluida) ||
@@ -208,12 +210,12 @@ export default function TasksPage() {
     return categoryMatch && statusMatch
   })
 
-  const getCategoryColor = (categoryId: string) => {
+  const getCategoryColor = (categoryId: number) => {
     return categories.find((c) => c.id === categoryId)?.color || "bg-gray-500"
   }
 
-  const getCategoryName = (categoryId: string) => {
-    return categories.find((c) => c.id === categoryId)?.name || categoryId
+  const getCategoryName = (categoryId: number) => {
+    return categories.find((c) => c.id === categoryId)?.name || "Null"
   }
 
   const getPriorityColor = (priority: string) => {
@@ -286,7 +288,7 @@ export default function TasksPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {categories.map((cat) => (
-                                  <SelectItem key={cat.id} value={cat.id}>
+                                  <SelectItem key={cat.id} value={cat.name}>
                                     {cat.name}
                                   </SelectItem>
                                 ))}
@@ -376,7 +378,7 @@ export default function TasksPage() {
                         <SelectContent>
                           <SelectItem value="todas">Todas</SelectItem>
                           {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
+                            <SelectItem key={cat.id} value={cat.name}>
                               {cat.name}
                             </SelectItem>
                           ))}
@@ -467,9 +469,9 @@ export default function TasksPage() {
                           </div>
                           {task.descricao && <p className="text-sm text-muted-foreground mb-3">{task.descricao}</p>}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className={getCategoryColor(task.categoria)}>
-                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.categoria)} mr-1.5`} />
-                              {getCategoryName(task.categoria)}
+                            <Badge variant="outline" className={getCategoryColor(task.categoriaId)}>
+                              <div className={`h-2 w-2 rounded-full ${getCategoryColor(task.categoriaId)} mr-1.5`} />
+                              {getCategoryName(task.categoriaId)}
                             </Badge>
                             <Badge variant="outline" className={getPriorityColor(task.prioridade)}>
                               {task.prioridade.charAt(0).toUpperCase() + task.prioridade.slice(1)}
