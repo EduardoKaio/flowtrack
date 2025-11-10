@@ -116,10 +116,12 @@ export default function TasksPage() {
 
     try {
 
+      let selectedCategory = categories.find(c => c.name === formData.categoria);
+
       const newTask = await createTask({
         titulo: formData.titulo,
         descricao: formData.descricao,
-        categoria: "trabalho",
+        categoriaId: selectedCategory?.id,
         prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
         concluida: false,
@@ -228,8 +230,6 @@ export default function TasksPage() {
         return "bg-gray-500/10 text-gray-700 border-gray-200"
     }
   }
-
-  console.log(tasks);
 
   return (
     <div className="flex min-h-screen">

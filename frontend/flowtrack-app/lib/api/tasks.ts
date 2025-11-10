@@ -26,7 +26,7 @@ export interface Category {
 export interface ResponseTaskDTO {
   titulo: string
   descricao: string
-  categoria: string
+  categoriaId: number | undefined
   prioridade: number
   dataConclusao: string
   concluida: boolean
