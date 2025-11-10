@@ -8,13 +8,19 @@ export interface Task {
   id: number
   titulo: string
   descricao: string
-  categoria: string
+  categoriaId: number
   prioridade: string
   dataConclusao: string
   concluida: boolean
   userId?: number 
   createdAt?: string
   updatedAt?: string
+}
+
+export interface Category {
+  id: number,
+  name: string,
+  color: string
 }
 
 export interface ResponseTaskDTO {

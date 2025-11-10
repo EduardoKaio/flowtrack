@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.flowtrack.flowtrack.enums.Prioridade;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,8 +15,7 @@ import java.time.LocalDate;
 @Table(name = "tasks")
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
+@Data
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

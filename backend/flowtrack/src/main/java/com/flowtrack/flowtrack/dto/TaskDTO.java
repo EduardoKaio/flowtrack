@@ -9,8 +9,7 @@ import java.time.LocalDate;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
+@Data
 public class TaskDTO {
     private Long id;
     private String titulo;

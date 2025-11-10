@@ -4,6 +4,8 @@ import com.flowtrack.flowtrack.dto.TaskDTO;
 import com.flowtrack.flowtrack.exception.ResourceNotFoundException;
 import com.flowtrack.flowtrack.mapper.TaskMapper;
 import com.flowtrack.flowtrack.model.Task;
+import com.flowtrack.flowtrack.model.Category;
+import com.flowtrack.flowtrack.repository.CategoryRepository;
 import com.flowtrack.flowtrack.repository.TaskRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,10 +15,12 @@ import org.springframework.stereotype.Service;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
+    private final CategoryRepository categoryRepository;
 
-    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper) {
+    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper, CategoryRepository categoryRepository) {
         this.taskRepository = taskRepository;
         this.taskMapper = taskMapper;
+        this.categoryRepository = categoryRepository;
     }
 
     public Page<TaskDTO> getAllTasks(Pageable pageable) {
@@ -32,6 +36,11 @@ public class TaskService {
 
     public TaskDTO createTask(TaskDTO taskDTO) {
         Task task = taskMapper.taskDTOParaTask(taskDTO);
+
+        Category categoria = categoryRepository.findById(taskDTO.getCategoriaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada com ID:" + taskDTO.getCategoriaId()));
+
+        task.setCategory(categoria);
         Task savedTask = taskRepository.save(task);
         return taskMapper.taskParaTaskDTO(savedTask);
     }
