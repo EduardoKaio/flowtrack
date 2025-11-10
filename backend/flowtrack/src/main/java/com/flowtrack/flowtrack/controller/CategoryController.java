@@ -15,7 +15,7 @@ import com.flowtrack.flowtrack.dto.CategoryCreateDTO;
 import com.flowtrack.flowtrack.model.Category;
 import com.flowtrack.flowtrack.service.CategoryService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import org.springframework.web.bind.annotation.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
