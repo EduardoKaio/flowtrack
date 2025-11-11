@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 public interface TaskMapper {
 
     @Mapping(source = "category.id", target = "categoriaId")
+    @Mapping(source = "category.name", target = "categoria")
     TaskDTO taskParaTaskDTO(Task task);
 
     Task taskDTOParaTask(TaskDTO taskDTO);

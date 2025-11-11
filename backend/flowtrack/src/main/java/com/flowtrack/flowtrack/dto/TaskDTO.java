@@ -20,5 +20,6 @@ public class TaskDTO {
     private Prioridade prioridade; // 1 (alta) 2 (média) 3 (baixa)
     private Long userId;
     private Long categoriaId;
+    private String categoria;
 
 }

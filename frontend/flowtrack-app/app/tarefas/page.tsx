@@ -43,36 +43,51 @@ export default function TasksPage() {
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
 
-  const fetchList = async (pageLoad: number = page, sizeLoad: number = size) => {
-    const p = Math.max(0, pageLoad)
-    setLoading(true)
+  const fetchList = async (pageLoad: number = page, sizeLoad: number = size, queryOverride?: string) => {
+  const p = Math.max(0, pageLoad);
+  setLoading(true);
 
-    try {
-      let resp
-      let respCategories
-      respCategories = await getCategories(1);
-      if (searchQuery) {
-        resp = await searchTasks(searchQuery, { page: p, size: sizeLoad })
-      } else {
-        resp = await getAllTasks({ page: p, size: sizeLoad })
-      }
+  const activeQuery = queryOverride !== undefined ? queryOverride : searchQuery;
 
-      setTasks(resp.content)
-      setPage(resp.number)
-      setSize(resp.size)
-      setTotalPages(resp.totalPages)
-      setTotalElements(resp.totalElements)
-      setCategories(respCategories);
-    } catch (err) {
-      console.error("Erro ao carregar tarefas:", err)
-    } finally {
-      setLoading(false)
+  try {
+    let resp;
+    if (activeQuery) {
+      resp = await searchTasks(activeQuery, { page: p, size: sizeLoad });
+    } else {
+      resp = await getAllTasks({ page: p, size: sizeLoad });
     }
+
+    setTasks(resp.content as Task[]);
+    setPage(resp.number);
+    setSize(resp.size);
+    setTotalPages(resp.totalPages);
+    setTotalElements(resp.totalElements);
+  } catch (err) {
+    console.error("Erro ao carregar tarefas:", err);
+  } finally {
+    setLoading(false);
   }
+};
+  useEffect(() => {
+    const fetchAllCategories = async () => {
+      try {
+
+        const resp = await getCategories(1);
+
+        setCategories(resp);
+
+      } catch (err) {
+        console.error("Erro ao carregar todas as categorias:", err);
+        setError("Não foi possível carregar as categorias.");
+      }
+    };
+
+    fetchAllCategories();
+  }, []);
 
   useEffect(() => {
-    fetchList(0)
-  }, [])
+    fetchList(0);
+  }, []);
 
   const fetchFilteredTasks = async () => {
     if (!searchQuery) return
@@ -85,10 +100,13 @@ export default function TasksPage() {
   }
 
   const clearFilter = async () => {
-    setSearchQuery("")
+    setSearchQuery("");
 
-    await fetchList(0)
-  }
+    setFilterCategory("todas");
+    setFilterStatus("todas");
+    
+    await fetchList(0, size, ""); 
+  };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -148,10 +166,11 @@ export default function TasksPage() {
 
   const startFormEdit = (task: Task) => {
     setEditingTask(task)
+    const categoryName = categories.find(c => c.id === task.categoriaId)?.name || "trabalho";
     setFormData({
       titulo: task.titulo,
       descricao: task.descricao,
-      categoria: "trabalho",
+      categoria: categoryName,
       prioridade: task.prioridade.toLocaleLowerCase(),
       dataConclusao: task.dataConclusao,
     })
@@ -163,10 +182,11 @@ export default function TasksPage() {
     if (!editingTask) return
 
     try {
+      let selectedCategory = categories.find(c => c.name === formData.categoria);
       const payload = {
         titulo: formData.titulo,
         descricao: formData.descricao,
-        categoria: "trabalho",
+        categoriaId: selectedCategory?.id,
         prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
       }
@@ -178,6 +198,16 @@ export default function TasksPage() {
       console.error("Erro ao atualizar tarefa:", error)
     }
   }
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); 
+      
+      setFilterCategory("todas");
+      setFilterStatus("todas");
+      
+      fetchList(0); 
+    }
+  };
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -344,6 +374,7 @@ export default function TasksPage() {
                   placeholder="Pesquisar tarefas..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearchKeyDown} 
                   className="pl-9"
                 />
               </div>

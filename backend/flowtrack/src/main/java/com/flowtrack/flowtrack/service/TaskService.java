@@ -55,6 +55,14 @@ public class TaskService {
         existingTask.setConcluida(taskDTO.isConcluida());
         existingTask.setPrioridade(taskDTO.getPrioridade());
 
+        if (taskDTO.getCategoriaId() != null) {
+            Category categoria = categoryRepository.findById(taskDTO.getCategoriaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada com ID:" + taskDTO.getCategoriaId()));
+            existingTask.setCategory(categoria);
+        } else {
+            existingTask.setCategory(null);
+        }
+
         Task savedTask = taskRepository.save(existingTask);
 
         return taskMapper.taskParaTaskDTO(savedTask);

@@ -32,6 +32,14 @@ export interface ResponseTaskDTO {
   concluida: boolean
 }
 
+export interface Page<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+}
+
 /**
  * Get all tasks
  *
@@ -154,6 +162,21 @@ export async function toggleTaskCompletion(id: number): Promise<Task> {
 export async function searchTasks(
   query: string,
   params?: { page?: number; size?: number; sort?: string }
-) {
-  return getTasksByQuery<Task>("/tasks", query, params)
+): Promise<Page<Task>> { 
+
+  const searchParams = new URLSearchParams({
+    titulo: query,
+    descricao: query,
+  });
+
+  if (params?.page !== undefined) {
+    searchParams.append('page', params.page.toString());
+  }
+  if (params?.size !== undefined) {
+    searchParams.append('size', params.size.toString());
+  }
+  
+  searchParams.append('sort', params?.sort || 'id,desc');
+
+  return apiRequest<Page<Task>>(`/tasks/search?${searchParams.toString()}`);
 }
