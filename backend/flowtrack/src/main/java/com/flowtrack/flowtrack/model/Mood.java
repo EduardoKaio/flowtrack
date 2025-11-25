@@ -29,8 +29,8 @@ public class Mood {
     private String notas;
     private LocalDateTime dataCriacao;
 
-    // solucao temporaria aguardando implementacao de autenticacao
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User usuario;
 }

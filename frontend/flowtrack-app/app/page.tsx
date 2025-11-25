@@ -28,6 +28,17 @@ import { getDashboardStats, type DashboardStats, type TaskDTO } from "@/lib/api/
 
 export default function DashboardPage() {
   const router = useRouter()
+  
+  // Redirecionar para /auth/welcome se não estiver autenticado
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    const isAuthenticated = localStorage.getItem("isAuthenticated")
+    
+    if (!token || !isAuthenticated) {
+      router.push("/auth/welcome")
+    }
+  }, [router])
+  
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false)
   const [dashboardData, setDashboardData] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)

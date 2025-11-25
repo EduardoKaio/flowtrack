@@ -22,9 +22,10 @@ import {
 } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter } from "lucide-react"
+import { CheckCircle2, Circle, Plus, Trash2, Edit, CalendarIcon, Search, Filter, Loader2 } from "lucide-react"
 import { Task, getAllTasks, createTask, updateTask, deleteTask, toggleTaskCompletion, searchTasks, Category } from "@/lib/api/tasks"
 import { getCategories } from "@/lib/api"
+import { getTodayLocalDate } from "@/lib/utils/date"
 
 const PRIORITY_ID_MAP: Record<string, number> = {
   "baixa": 0,
@@ -46,6 +47,7 @@ export default function TasksPage() {
   const fetchList = async (pageLoad: number = page, sizeLoad: number = size, queryOverride?: string) => {
   const p = Math.max(0, pageLoad);
   setLoading(true);
+  setError(null);
 
   const activeQuery = queryOverride !== undefined ? queryOverride : searchQuery;
 
@@ -57,13 +59,30 @@ export default function TasksPage() {
       resp = await getAllTasks({ page: p, size: sizeLoad });
     }
 
+    if (!resp || !resp.content) {
+      console.error("Resposta inválida da API:", resp);
+      setTasks([]);
+      setPage(0);
+      setSize(sizeLoad);
+      setTotalPages(0);
+      setTotalElements(0);
+      setError("Não foi possível carregar as tarefas. Verifique sua conexão e tente novamente.");
+      return;
+    }
+
     setTasks(resp.content as Task[]);
     setPage(resp.number);
     setSize(resp.size);
     setTotalPages(resp.totalPages);
     setTotalElements(resp.totalElements);
-  } catch (err) {
+  } catch (err: any) {
     console.error("Erro ao carregar tarefas:", err);
+    setTasks([]);
+    setPage(0);
+    setSize(sizeLoad);
+    setTotalPages(0);
+    setTotalElements(0);
+    setError(err?.message || "Não foi possível carregar as tarefas. Verifique sua conexão e tente novamente.");
   } finally {
     setLoading(false);
   }
@@ -71,14 +90,20 @@ export default function TasksPage() {
   useEffect(() => {
     const fetchAllCategories = async () => {
       try {
+        const resp = await getCategories();
 
-        const resp = await getCategories(1);
+        if (!resp || !Array.isArray(resp)) {
+          console.error("Resposta inválida de categorias:", resp);
+          setCategories([]);
+          setError("Não foi possível carregar as categorias.");
+          return;
+        }
 
         setCategories(resp);
-
-      } catch (err) {
+      } catch (err: any) {
         console.error("Erro ao carregar todas as categorias:", err);
-        setError("Não foi possível carregar as categorias.");
+        setCategories([]);
+        setError(err?.message || "Não foi possível carregar as categorias.");
       }
     };
 
@@ -118,7 +143,7 @@ export default function TasksPage() {
     descricao: "",
     categoria: "trabalho",
     prioridade: "media",
-    dataConclusao: "",
+    dataConclusao: getTodayLocalDate(),
   })
 
   useEffect(() => {
@@ -133,22 +158,23 @@ export default function TasksPage() {
     e.preventDefault()
 
     try {
-
       let selectedCategory = categories.find(c => c.name === formData.categoria);
 
-      const newTask = await createTask({
+      const taskPayload = {
         titulo: formData.titulo,
         descricao: formData.descricao,
         categoriaId: selectedCategory?.id,
         prioridade: PRIORITY_ID_MAP[formData.prioridade],
         dataConclusao: formData.dataConclusao,
         concluida: false,
-      })
+      }
+
+      const newTask = await createTask(taskPayload)
 
       setTasks([...tasks, newTask])
       resetForm()
     } catch (error) {
-      console.error("Erro ao criar tarefa:", error)
+      console.error("[TAREFAS] Erro ao criar tarefa:", error)
     }
   }
 
@@ -158,7 +184,7 @@ export default function TasksPage() {
       descricao: "",
       categoria: "trabalho",
       prioridade: "media",
-      dataConclusao: "",
+      dataConclusao: getTodayLocalDate(),
     })
     setEditingTask(null)
     setIsDialogOpen(false)
@@ -261,6 +287,17 @@ export default function TasksPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -317,7 +354,7 @@ export default function TasksPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {categories.map((cat) => (
+                                {(categories || []).map((cat) => (
                                   <SelectItem key={cat.id} value={cat.name}>
                                     {cat.name}
                                   </SelectItem>
@@ -408,7 +445,7 @@ export default function TasksPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="todas">Todas</SelectItem>
-                          {categories.map((cat) => (
+                          {(categories || []).map((cat) => (
                             <SelectItem key={cat.id} value={cat.name}>
                               {cat.name}
                             </SelectItem>
@@ -509,7 +546,11 @@ export default function TasksPage() {
                             </Badge>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3.5 w-3.5" />
-                              {new Date(task.dataConclusao).toLocaleDateString("pt-BR")}
+                              {task.dataConclusao ? (() => {
+                                // Converter string YYYY-MM-DD para formato brasileiro DD/MM/YYYY
+                                const [year, month, day] = task.dataConclusao.split('-')
+                                return `${day}/${month}/${year}`
+                              })() : 'Sem data'}
                             </div>
                           </div>
                         </div>

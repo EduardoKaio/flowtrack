@@ -47,7 +47,7 @@ public class AdminUserController {
         }
 
 
-        Page<UserDTO> userDtoPage = userPage.map(u -> new UserDTO(u.getId(), u.getNome(), u.getEmail(), u.getRole()));
+        Page<UserDTO> userDtoPage = userPage.map(userService::toDTO);
         return ResponseEntity.ok(userDtoPage);
     }
 
@@ -65,7 +65,7 @@ public class AdminUserController {
         }
 
         User user = userOptional.get();
-        UserDTO userDTO = new UserDTO(user.getId(), user.getNome(), user.getEmail(), user.getRole());
+        UserDTO userDTO = userService.toDTO(user);
         return ResponseEntity.ok(userDTO);
     }
 
@@ -84,7 +84,7 @@ public class AdminUserController {
 
         // Converte a entidade (User) de volta para DTO para a resposta
         User updatedUser = updatedUserOptional.get();
-        UserDTO responseDTO = new UserDTO(updatedUser.getId(), updatedUser.getNome(), updatedUser.getEmail(), updatedUser.getRole());
+        UserDTO responseDTO = userService.toDTO(updatedUser);
         
         return ResponseEntity.ok(responseDTO);
     }

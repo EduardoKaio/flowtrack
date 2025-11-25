@@ -3,6 +3,7 @@ package com.flowtrack.flowtrack.service;
 import com.flowtrack.flowtrack.model.FocusSession;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.FocusSessionRepository;
+import com.flowtrack.flowtrack.util.DateUtil;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -45,7 +46,7 @@ public class FocusSessionService {
 
     public FocusSession finalizarSession(Long id, User usuario) {
         FocusSession s = getSession(id, usuario);
-        s.setFim(LocalDateTime.now());
+        s.setFim(DateUtil.agora());
         long min = Duration.between(s.getInicio(), s.getFim()).toMinutes() - s.getTempoPausa();
         s.setDuracaoMin(min);
         return repo.save(s);
@@ -55,7 +56,7 @@ public class FocusSessionService {
         FocusSession s = getSession(id, usuario);
         if (!s.isPausada()) {
             s.setPausada(true);
-            s.setPausaInicio(LocalDateTime.now());
+            s.setPausaInicio(DateUtil.agora());
         }
         return repo.save(s);
     }
@@ -63,7 +64,7 @@ public class FocusSessionService {
     public FocusSession continuarSession(Long id, User usuario) {
         FocusSession s = getSession(id, usuario);
         if (s.isPausada() && s.getPausaInicio() != null) {
-            long pausaMin = Duration.between(s.getPausaInicio(), LocalDateTime.now()).toMinutes();
+            long pausaMin = Duration.between(s.getPausaInicio(), DateUtil.agora()).toMinutes();
             s.setTempoPausa(s.getTempoPausa() + pausaMin);
         }
         s.setPausada(false);

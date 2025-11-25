@@ -26,6 +26,8 @@ export function UserMenu() {
     localStorage.removeItem("isAuthenticated")
     localStorage.removeItem("userEmail")
     localStorage.removeItem("userName")
+    localStorage.removeItem("isAdmin")
+    localStorage.removeItem("token")
     router.push("/auth/welcome")
   }
 

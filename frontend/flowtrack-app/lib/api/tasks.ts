@@ -91,10 +91,13 @@ export async function getTaskById(id: number): Promise<Task> {
  * ```
  */
 export async function createTask(task: ResponseTaskDTO): Promise<Task> {
-  return apiRequest<Task>("/tasks", {
+  
+  const response = await apiRequest<Task>("/tasks", {
     method: "POST",
     body: JSON.stringify(task),
   })
+  
+  return response
 }
 
 /**

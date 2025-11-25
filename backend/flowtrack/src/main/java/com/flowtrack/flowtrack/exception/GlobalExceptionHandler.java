@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getClass().getName(),
-                "Dados não encontrados.",
+                ex.getMessage() != null ? ex.getMessage() : "Dados não encontrados.",
                 request.getRequestURI(),
                 LocalDateTime.now()
         );

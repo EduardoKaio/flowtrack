@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.flowtrack.flowtrack.dto.CategoryCreateDTO;
+import com.flowtrack.flowtrack.exception.ResourceNotFoundException;
 import com.flowtrack.flowtrack.model.Category;
 import com.flowtrack.flowtrack.service.CategoryService;
 
@@ -30,40 +30,46 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getVisibleCategories(@RequestParam Long userId) {
+    public ResponseEntity<?> getVisibleCategories() {
         try {
-            return ResponseEntity.ok(categoryService.getVisibleCategories(userId));
+            return ResponseEntity.ok(categoryService.getVisibleCategories());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(Response.SC_NOT_FOUND).body(new java.util.HashMap<String, String>() {{
+                put("message", e.getMessage());
+            }});
         } catch (Exception e) {
-            return ResponseEntity.status(Response.SC_INTERNAL_SERVER_ERROR).body("{\"message\": \"Erro ao buscar categorias.\"}");
+            e.printStackTrace();
+            return ResponseEntity.status(Response.SC_INTERNAL_SERVER_ERROR).body(new java.util.HashMap<String, String>() {{
+                put("message", "Erro ao buscar categorias: " + e.getMessage());
+            }});
         }
     }
 
     @PostMapping
-    public ResponseEntity<?> createCategory(@RequestParam Long userId, @RequestBody CategoryCreateDTO categoryDTO) {
+    public ResponseEntity<?> createCategory(@RequestBody CategoryCreateDTO categoryDTO) {
         try {
-            System.out.println(categoryDTO);
             Category category = new Category();
             category.setName(categoryDTO.getName());
             category.setColor(categoryDTO.getColor());
-            return ResponseEntity.ok(categoryService.createCategory(category, userId));
+            return ResponseEntity.ok(categoryService.createCategory(category));
         } catch (Exception e) {
             return ResponseEntity.status(Response.SC_INTERNAL_SERVER_ERROR).body("{\"message\": \"Erro ao criar categoria.\"}");
         }
     }
 
     @PutMapping("/{categoryId}")
-    public ResponseEntity<?> updateCategory(@RequestParam Long userId, @PathVariable Long categoryId, @RequestBody Category category) {
+    public ResponseEntity<?> updateCategory(@PathVariable Long categoryId, @RequestBody Category category) {
         try {
-            return ResponseEntity.ok(categoryService.updateCategory(categoryId, category, userId));
+            return ResponseEntity.ok(categoryService.updateCategory(categoryId, category));
         } catch (Exception e) {
             return ResponseEntity.status(Response.SC_INTERNAL_SERVER_ERROR).body("{\"message\": \"Erro ao atualizar categoria.\"}");
         }
     }
 
     @DeleteMapping("/{categoryId}")
-    public ResponseEntity<?> deleteOrHideCategory(@RequestParam Long userId, @PathVariable Long categoryId) {
+    public ResponseEntity<?> deleteOrHideCategory(@PathVariable Long categoryId) {
         try {
-            categoryService.deleteOrHideCategory(userId, categoryId);
+            categoryService.deleteOrHideCategory(categoryId);
             return ResponseEntity.ok("{\"message\": \"Categoria deletada ou escondida com sucesso.\"}");
         } catch (Exception e) {
             return ResponseEntity.status(Response.SC_INTERNAL_SERVER_ERROR).body("{\"message\": \"Erro ao deletar ou esconder categoria.\"}");

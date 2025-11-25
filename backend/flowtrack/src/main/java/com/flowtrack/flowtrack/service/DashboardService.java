@@ -2,23 +2,29 @@ package com.flowtrack.flowtrack.service;
 
 import com.flowtrack.flowtrack.dto.DashboardDTO;
 import com.flowtrack.flowtrack.dto.TaskDTO;
+import com.flowtrack.flowtrack.exception.ResourceNotFoundException;
 import com.flowtrack.flowtrack.mapper.MoodMapper;
 import com.flowtrack.flowtrack.mapper.TaskMapper;
 import com.flowtrack.flowtrack.model.FocusSession;
 import com.flowtrack.flowtrack.model.Habits;
 import com.flowtrack.flowtrack.model.Mood;
 import com.flowtrack.flowtrack.model.Task;
+import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.FocusSessionRepository;
 import com.flowtrack.flowtrack.repository.HabitsRepository;
 import com.flowtrack.flowtrack.repository.MoodRepository;
 import com.flowtrack.flowtrack.repository.TaskRepository;
+import com.flowtrack.flowtrack.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.flowtrack.flowtrack.util.DateUtil;
 
 @Service
 public class DashboardService {
@@ -42,12 +48,18 @@ public class DashboardService {
     }
 
     public DashboardDTO getDashboardStats() {
-        LocalDate today = LocalDate.now();
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
+        ZoneId brasiliaZone = DateUtil.getBrasiliaZone();
+        LocalDate today = DateUtil.hoje();
 
         // --- Estatísticas de Tarefas ---
-        long total = taskRepository.countByDataConclusao(today);
-        long completed = taskRepository.countByDataConclusaoAndConcluida(today, true);
-        List<Task> tasks = taskRepository.findTop4ByDataConclusao(today);
+        long total = taskRepository.countByDataConclusaoAndUsuario(today, currentUser);
+        long completed = taskRepository.countByDataConclusaoAndConcluidaAndUsuario(today, true, currentUser);
+        List<Task> tasks = taskRepository.findTop4ByDataConclusaoAndUsuario(today, currentUser);
         List<TaskDTO> taskDTOs = tasks.stream()
                 .map(taskMapper::taskParaTaskDTO)
                 .collect(Collectors.toList());
@@ -55,7 +67,7 @@ public class DashboardService {
         // --- Estatísticas de Humor ---
         var todayStart = today.atStartOfDay();
         var todayEnd = today.atTime(LocalTime.MAX);
-        Optional<Mood> moodOpt = moodRepository.findTopByDataCriacaoBetweenOrderByDataCriacaoDesc(todayStart, todayEnd);
+        Optional<Mood> moodOpt = moodRepository.findTopByUsuarioAndDataCriacaoBetweenOrderByDataCriacaoDesc(currentUser, todayStart, todayEnd);
 
         String moodString = "Não registrado";
         String moodEmoji = "🤔";
@@ -67,11 +79,35 @@ public class DashboardService {
         }
         
         // --- Estatísticas de Foco ---
-        List<FocusSession> todaySessions = focusSessionRepository.findByInicioBetween(todayStart, todayEnd);
-        long focusTimeToday = todaySessions.stream().mapToLong(FocusSession::getDuracaoMin).sum();
+        List<FocusSession> allUserSessions = focusSessionRepository.findByUsuario(currentUser);
+        List<FocusSession> todaySessions = allUserSessions.stream()
+                .filter(session -> {
+                    if (session.getInicio() == null && session.getFim() == null) {
+                        return false;
+                    }
+                    ZonedDateTime inicioZoned = session.getInicio() != null 
+                        ? session.getInicio().atZone(java.time.ZoneId.of("UTC")).withZoneSameInstant(brasiliaZone)
+                        : null;
+                    ZonedDateTime fimZoned = session.getFim() != null 
+                        ? session.getFim().atZone(java.time.ZoneId.of("UTC")).withZoneSameInstant(brasiliaZone)
+                        : null;
+                    
+                    // Verificar se início ou fim estão no dia de hoje
+                    boolean inicioHoje = inicioZoned != null && 
+                        inicioZoned.toLocalDate().equals(today);
+                    boolean fimHoje = fimZoned != null && 
+                        fimZoned.toLocalDate().equals(today);
+                    
+                    return inicioHoje || fimHoje;
+                })
+                .collect(Collectors.toList());
+        long focusTimeToday = todaySessions.stream()
+                .filter(s -> s.getDuracaoMin() != null)
+                .mapToLong(FocusSession::getDuracaoMin)
+                .sum();
         long focusSessionsToday = todaySessions.size();
 
-        List<Habits> allHabits = habitsRepository.findAll(); 
+        List<Habits> allHabits = habitsRepository.findByUsuario(currentUser); 
         
         long habitsTotalToday = allHabits.size(); 
         

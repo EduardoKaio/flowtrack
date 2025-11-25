@@ -3,6 +3,7 @@ package com.flowtrack.flowtrack.model;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.flowtrack.flowtrack.util.DateUtil;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -43,12 +44,13 @@ public class Habits {
     @Enumerated(EnumType.STRING)
     private TipoFrequencia tipoFrequencia; // DIARIO, SEMANAL
 
-    private LocalDate dataCriacao = LocalDate.now();
+    private LocalDate dataCriacao = DateUtil.hoje();
     private String cor;
     private String icone;
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "usuario_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User usuario;
 
     @OneToOne(mappedBy = "habits", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)

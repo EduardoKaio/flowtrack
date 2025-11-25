@@ -24,6 +24,7 @@ public class FocusSession {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User usuario;
 
 }

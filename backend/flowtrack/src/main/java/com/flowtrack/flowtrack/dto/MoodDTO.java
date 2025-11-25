@@ -30,7 +30,6 @@ public class MoodDTO {
     @Min(1)
     @Max(10)
     private Integer estresse;
-
     private String notas;
     private LocalDateTime dataCriacao = LocalDateTime.now();
     private Long userId;

@@ -1,4 +1,5 @@
 package com.flowtrack.flowtrack.model;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,7 @@ public class FocusSettings {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
+    @JsonIgnore
     private User usuario;
 
 }

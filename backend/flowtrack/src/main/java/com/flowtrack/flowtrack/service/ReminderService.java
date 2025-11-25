@@ -24,11 +24,11 @@ public class ReminderService {
 
     }
 
-    public List<Reminder> getAllRemindersByUser(User usuario) {  // Alterado para List
+    public List<Reminder> getAllRemindersByUser(User usuario) {  
         return reminderRepository.findByUsuario(usuario);
     }
 
-    public List<Reminder> searchRemindersByUser(String query, User usuario) {  // Alterado para List
+    public List<Reminder> searchRemindersByUser(String query, User usuario) {  
         String searchQuery = "%" + query.toLowerCase() + "%";
         return reminderRepository.searchByUsuarioAndTitulo(usuario, searchQuery);
     }

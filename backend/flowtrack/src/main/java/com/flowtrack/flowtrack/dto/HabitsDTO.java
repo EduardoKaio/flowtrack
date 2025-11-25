@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class HabitsDTO {
-    
     private String nome;
     private String descricao;
     private Integer meta;

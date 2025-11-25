@@ -21,9 +21,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit, Target, CheckCircle2, Circle, Flame } from "lucide-react"
+import { Plus, Trash2, Edit, Target, CheckCircle2, Circle, Flame, Loader2 } from "lucide-react"
 import { getHabits, ProgressoHabito, Habito, HabitCreateRequest, createHabit, deleteHabit, editHabit, addCompleteDay } from "@/lib/api"
 import { set } from "date-fns"
+import { getTodayLocalDate, formatLocalDate } from "@/lib/utils/date"
 
 interface Habit {
   id: number
@@ -67,6 +68,7 @@ const colorOptions = [
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [habitos, setHabitos] = useState<Habito[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [progress, setProgress] = useState<HabitProgress[]>([])
 
@@ -83,14 +85,19 @@ export default function HabitsPage() {
 
   async function loadHabits() {
     try {
+      setLoading(true)
       const response = await getHabits();
       setHabitos(response);
     } catch (error) {
       console.error("Error loading habits:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
   function divideHabitsAndProgress(habitos: Habito[]) {
+    const today = getTodayLocalDate()
+    
     const loadedHabits: Habit[] = habitos.map((habito) => ({
       id: habito.id,
       name: habito.nome,
@@ -100,12 +107,17 @@ export default function HabitsPage() {
       icon: habito.icone,
       color: habito.cor,
     }))
-    const loadedProgress: HabitProgress[] = habitos.map((habito) => ({
-      habitId: habito.id,
-      completedDays: habito.progresso.diasConcluidos,
-      currentStreak: habito.progresso.sequenciaAtual,
-      bestStreak: habito.progresso.melhorSequencia,
-    }))
+    const loadedProgress: HabitProgress[] = habitos
+      .filter((habito) => habito.progresso != null)
+      .map((habito) => {
+        const diasConcluidos = habito.progresso?.diasConcluidos || []
+        return {
+          habitId: habito.id,
+          completedDays: diasConcluidos,
+          currentStreak: habito.progresso?.sequenciaAtual || 0,
+          bestStreak: habito.progresso?.melhorSequencia || 0,
+        }
+      })
     setHabits(loadedHabits)
     setProgress(loadedProgress)
   }
@@ -202,11 +214,12 @@ export default function HabitsPage() {
   }
 
   const toggleHabitToday = async (habitId: number) => {
+    const today = getTodayLocalDate()
 
     try {
-      await addCompleteDay(habitId);
+      const result = await addCompleteDay(habitId);
     } catch (error) {
-      console.error("Error toggling habit for today:", error)
+      console.error("[HABITOS] Erro ao marcar hábito:", error)
     }
     loadHabits()
   }
@@ -216,7 +229,7 @@ export default function HabitsPage() {
   }
 
   const isCompletedToday = (habitId: number) => {
-    const today = new Date().toISOString().split("T")[0]
+    const today = getTodayLocalDate()
     const habitProgress = getHabitProgress(habitId)
     return habitProgress?.completedDays.includes(today) || false
   }
@@ -226,7 +239,7 @@ export default function HabitsPage() {
     for (let i = 6; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
-      days.push(date.toISOString().split("T")[0])
+      days.push(formatLocalDate(date))
     }
     return days
   }
@@ -234,6 +247,17 @@ export default function HabitsPage() {
   const getWeekdayLabel = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString("pt-BR", { weekday: "short" }).charAt(0).toUpperCase()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
 
   return (

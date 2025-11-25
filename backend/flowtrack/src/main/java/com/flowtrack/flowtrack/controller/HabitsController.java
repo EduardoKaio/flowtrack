@@ -96,11 +96,18 @@ public class HabitsController {
     @PostMapping("/{habitId}/completar-dia")
     @Operation(summary = "Adicionar dia concluído", description = "Adiciona um dia concluído ao progresso do hábito")
     public ResponseEntity<?> addCompleteDay(@PathVariable Long habitId) {
+        System.out.println("[HABITS CONTROLLER] Recebida requisição POST /api/habits/" + habitId + "/completar-dia");
         try {
-            return ResponseEntity.ok(habitsService.addCompleteDay(habitId));
+            var result = habitsService.addCompleteDay(habitId);
+            System.out.println("[HABITS CONTROLLER] Resultado retornado:");
+            System.out.println("  - Dias concluídos: " + result.getDiasConcluidos());
+            return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
+            System.out.println("[HABITS CONTROLLER] Erro: " + e.getMessage());
             return ResponseEntity.status(404).body("{\"message\": \"Hábito não encontrado.\"}");
         } catch (Exception e) {
+            System.out.println("[HABITS CONTROLLER] Erro inesperado: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(500).body("Ocorreu um erro ao registrar o dia concluído. Tente novamente.");
         }
     }

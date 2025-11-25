@@ -11,4 +11,5 @@ public class ReminderDTO {
     private String descricao;
     private LocalDateTime dataHora;
     private boolean ativo;
+    
 }

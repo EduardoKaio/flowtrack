@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Heart, Plus, TrendingUp, Calendar, Edit, Trash2 } from "lucide-react"
+import { Heart, Plus, TrendingUp, Calendar, Edit, Trash2, Loader2 } from "lucide-react"
 import { MoodEntry, createMoodEntry, deleteMoodEntry, getAllMoodEntries, getMoodEntriesByDateRange, getMoodEntryById, updateMoodEntry } from "@/lib/api/mood"
 
 const moodOptions = [
@@ -242,6 +242,17 @@ export default function WellBeingPage() {
   const getMoodColor = (mood: string) => {
     const key = mood.toLowerCase()
     return moodOptions.find((m) => m.value === key)?.color || "bg-gray-500"
+  }
+
+  if (loadingList) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
 
   return (
