@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Trash2, Edit, FolderKanban } from "lucide-react"
+import { Plus, Trash2, Edit, FolderKanban, Loader2 } from "lucide-react"
 import { get } from "http"
 import { createCategory, deleteOrHideCategory, editCategory, getCategories } from "@/lib/api"
 
@@ -42,6 +42,7 @@ const colorOptions = [
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -52,10 +53,21 @@ export default function CategoriesPage() {
 
   async function loadCategories() {
     try {
-      const response = await getCategories(1);
+      setLoading(true)
+      const response = await getCategories();
+      
+      if (!response || !Array.isArray(response)) {
+        console.error("Resposta inválida de categorias:", response);
+        setCategories([]);
+        return;
+      }
+      
       setCategories(response);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load categories:", error);
+      setCategories([]);
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -74,7 +86,7 @@ export default function CategoriesPage() {
         })
       } else {
         // Call API to create category
-        await createCategory(1, {
+        await createCategory({
           name: formData.name,
           color: formData.color,
         })
@@ -106,11 +118,22 @@ export default function CategoriesPage() {
   const handleDelete = async (id: number) => {
       try {
         // Call API to delete category
-        await deleteOrHideCategory(1, id)
+        await deleteOrHideCategory(id)
         loadCategories()
       } catch (error) {
         console.error("Failed to delete category:", error)
       }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
 
   return (

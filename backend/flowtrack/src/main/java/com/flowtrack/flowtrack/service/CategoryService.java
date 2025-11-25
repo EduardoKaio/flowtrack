@@ -2,15 +2,16 @@ package com.flowtrack.flowtrack.service;
 
 import java.nio.file.AccessDeniedException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.flowtrack.flowtrack.dto.CategoryDTO;
+import com.flowtrack.flowtrack.exception.ResourceNotFoundException;
 import com.flowtrack.flowtrack.model.Category;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.CategoryRepository;
 import com.flowtrack.flowtrack.repository.UserRepository;
+import com.flowtrack.flowtrack.util.SecurityUtil;
 
 import jakarta.transaction.Transactional;
 
@@ -26,30 +27,35 @@ public class CategoryService {
     }
 
     @Transactional
-    public List<CategoryDTO> getVisibleCategories(Long userId) {
-        return categoryRepository.findVisibleCategoriesWithCount(userId);
+    public List<CategoryDTO> getVisibleCategories() {
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        return categoryRepository.findVisibleCategoriesWithCount(currentUser);
     }
 
     @Transactional
-    public Category createCategory(Category category, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado com ID: " + userId));
+    public Category createCategory(Category category) {
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
 
-        System.out.println(category);
-
-        category.setUser(user);
+        category.setUser(currentUser);
         
         return categoryRepository.save(category);
     }
 
     @Transactional
-    public Category updateCategory(Long categoryId, Category updatedCategory, Long userId) throws AccessDeniedException {
-        Category existingCategory = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada com ID: " + categoryId));
-        
-        if (!existingCategory.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("Acesso negado para atualizar a categoria com ID: " + categoryId);
+    public Category updateCategory(Long categoryId, Category updatedCategory) throws AccessDeniedException {
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
         }
+        
+        Category existingCategory = categoryRepository.findByIdAndUser(categoryId, currentUser)
+                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada com ID: " + categoryId));
 
         existingCategory.setName(updatedCategory.getName());
         existingCategory.setColor(updatedCategory.getColor());
@@ -58,18 +64,20 @@ public class CategoryService {
     }
 
     @Transactional
-    public void deleteOrHideCategory(Long userId, Long categoryId) throws AccessDeniedException {
+    public void deleteOrHideCategory(Long categoryId) throws AccessDeniedException {
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada com ID: " + categoryId));
         
         if (category.getUser() == null) {
             // Categoria global - esconder para o usuário
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado com ID: " + userId));
-
-            user.getHiddenCategories().add(category);
-            userRepository.save(user);
-        } else if (category.getUser().getId().equals(userId)) {
+            currentUser.getHiddenCategories().add(category);
+            userRepository.save(currentUser);
+        } else if (category.getUser().getId().equals(currentUser.getId())) {
             // Categoria do usuário - deletar
             categoryRepository.delete(category);
         } else {

@@ -9,21 +9,28 @@ export interface Category {
 
 export interface CategoryCreateRequest extends Omit<Category, "id" | "taskCount"> {}
 
-export async function getCategories(userId: number): Promise<Category[]> {
-  return apiRequest<Category[]>(`/categories?userId=${userId}`, {
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const result = await apiRequest<Category[]>(`/categories`, {
     method: "GET",
   })
+    // Garantir que sempre retorna um array
+    return Array.isArray(result) ? result : []
+  } catch (error) {
+    console.error("Error fetching categories:", error)
+    return []
+  }
 }
 
-export async function createCategory(userId: number, dto: CategoryCreateRequest): Promise<Category> {
-  return apiRequest<Category>(`/categories?userId=${userId}`, {
+export async function createCategory(dto: CategoryCreateRequest): Promise<Category> {
+  return apiRequest<Category>(`/categories`, {
     method: "POST",
     body: JSON.stringify(dto),
   })
 }
 
-export async function deleteOrHideCategory(userId: number, categoryId: number): Promise<void> {
-  return apiRequest<void>(`/categories/${categoryId}?userId=${userId}`, {
+export async function deleteOrHideCategory(categoryId: number): Promise<void> {
+  return apiRequest<void>(`/categories/${categoryId}`, {
     method: "DELETE",
   })
 }

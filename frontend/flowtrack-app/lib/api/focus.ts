@@ -9,7 +9,6 @@ export interface FocusSessionResponse {
   inicio: string
   fim: string
   duracaoMin: number
-  // adicione outros campos se seu model tiver (ex: pausada, tempoPausa)
 }
 
 /**
@@ -70,8 +69,17 @@ export async function createSession(session: FocusSessionCreateDTO): Promise<Foc
  * Get user's Pomodoro settings
  * Endpoint: GET /api/focus/settings
  */
-export async function getPomodoroSettings(): Promise<PomodoroSettings> {
-  return apiRequest<PomodoroSettings>("/focus/settings")
+export async function getPomodoroSettings(): Promise<PomodoroSettings | null> {
+  try {
+    return await apiRequest<PomodoroSettings>("/focus/settings")
+  } catch (error: any) {
+    // Se retornar 404, significa que não há configurações salvas ainda
+    // Retornar null para usar configurações padrão
+    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
+      return null
+    }
+    throw error
+  }
 }
 
 /**

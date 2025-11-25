@@ -4,7 +4,7 @@ public enum Prioridade {
     BAIXA(0),
     MEDIA(1),
     ALTA(2);
-
+    
     private final int id;
 
     Prioridade(int id) {

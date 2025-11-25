@@ -1,0 +1,30 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force UTF-8 encoding for all text files
+*.java text eol=lf charset=utf-8
+*.ts text eol=lf charset=utf-8
+*.tsx text eol=lf charset=utf-8
+*.js text eol=lf charset=utf-8
+*.jsx text eol=lf charset=utf-8
+*.json text eol=lf charset=utf-8
+*.xml text eol=lf charset=utf-8
+*.properties text eol=lf charset=utf-8
+*.sql text eol=lf charset=utf-8
+*.md text eol=lf charset=utf-8
+*.yml text eol=lf charset=utf-8
+*.yaml text eol=lf charset=utf-8
+*.html text eol=lf charset=utf-8
+*.css text eol=lf charset=utf-8
+*.scss text eol=lf charset=utf-8
+
+# Explicitly declare files you don't want Git to process
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.class binary
+

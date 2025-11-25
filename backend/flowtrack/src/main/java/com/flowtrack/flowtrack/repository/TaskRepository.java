@@ -1,9 +1,11 @@
 package com.flowtrack.flowtrack.repository;
 
 import com.flowtrack.flowtrack.model.Task;
+import com.flowtrack.flowtrack.model.User;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,17 +17,23 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
+    Page<Task> findByUsuario(User usuario, Pageable pageable);
+    
+    Optional<Task> findByIdAndUsuario(Long id, User usuario);
+
     @Query(value = "SELECT t FROM Task t LEFT JOIN FETCH t.category c " +
-                   "WHERE (LOWER(t.titulo) LIKE LOWER(CONCAT('%', :titulo, '%')) OR :titulo = '') " +
-                   "OR (LOWER(t.descricao) LIKE LOWER(CONCAT('%', :descricao, '%')) OR :descricao = '')",
+                   "WHERE t.usuario = :usuario " +
+                   "AND ((LOWER(t.titulo) LIKE LOWER(CONCAT('%', :titulo, '%')) OR :titulo = '') " +
+                   "OR (LOWER(t.descricao) LIKE LOWER(CONCAT('%', :descricao, '%')) OR :descricao = ''))",
            countQuery = "SELECT count(t) FROM Task t " +
-                        "WHERE (LOWER(t.titulo) LIKE LOWER(CONCAT('%', :titulo, '%')) OR :titulo = '') " +
-                        "OR (LOWER(t.descricao) LIKE LOWER(CONCAT('%', :descricao, '%')) OR :descricao = '')")
-    Page<Task> findByTitleOrDescription(@Param("titulo") String titulo, @Param("descricao") String descricao, Pageable pageable);
+                        "WHERE t.usuario = :usuario " +
+                        "AND ((LOWER(t.titulo) LIKE LOWER(CONCAT('%', :titulo, '%')) OR :titulo = '') " +
+                        "OR (LOWER(t.descricao) LIKE LOWER(CONCAT('%', :descricao, '%')) OR :descricao = ''))")
+    Page<Task> findByTitleOrDescriptionAndUsuario(@Param("titulo") String titulo, @Param("descricao") String descricao, @Param("usuario") User usuario, Pageable pageable);
 
-    List<Task> findTop4ByDataConclusao(LocalDate date);
+    List<Task> findTop4ByDataConclusaoAndUsuario(LocalDate date, User usuario);
 
-    long countByDataConclusao(LocalDate date);
+    long countByDataConclusaoAndUsuario(LocalDate date, User usuario);
 
-    long countByDataConclusaoAndConcluida(LocalDate date, boolean concluida);
+    long countByDataConclusaoAndConcluidaAndUsuario(LocalDate date, boolean concluida, User usuario);
 }

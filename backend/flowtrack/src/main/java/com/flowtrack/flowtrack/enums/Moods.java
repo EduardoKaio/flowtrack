@@ -6,7 +6,7 @@ public enum Moods {
     NEUTRO(2),
     RUIM(3),
     PESSIMO(4);
-
+    
     private final int id;
 
     Moods(int id) {

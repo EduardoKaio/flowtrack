@@ -3,8 +3,8 @@ import com.flowtrack.flowtrack.dto.ReminderDTO;
 import com.flowtrack.flowtrack.dto.ReminderInputDTO;
 import com.flowtrack.flowtrack.model.Reminder;
 import com.flowtrack.flowtrack.model.User;
-import com.flowtrack.flowtrack.repository.UserRepository;
 import com.flowtrack.flowtrack.service.ReminderService;
+import com.flowtrack.flowtrack.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -20,22 +20,23 @@ import java.util.Optional;
 public class ReminderController {
 
     private final ReminderService reminderService;
-    private final UserRepository userRepository;
 
-    public ReminderController(ReminderService reminderService, UserRepository userRepository) {
-
+    public ReminderController(ReminderService reminderService) {
         this.reminderService = reminderService;
-        this.userRepository = userRepository;
+    }
 
+    private User getCurrentUser() {
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+        }
+        return currentUser;
     }
 
     @GetMapping
     @Operation(summary = "Listar lembretes", description = "Retorna uma lista de todos os lembretes do usuário, opcionalmente filtrando por query")
-    public ResponseEntity<List<ReminderDTO>> listReminders(@RequestHeader("userID") String userID, @RequestParam(name = "query", required = false) String query) {
-
-        Optional<User> usuarioOpt = userRepository.findById(Long.parseLong(userID));
-        if (usuarioOpt.isEmpty()) return ResponseEntity.status(404).build();
-        User usuario = usuarioOpt.get();
+    public ResponseEntity<List<ReminderDTO>> listReminders(@RequestParam(name = "query", required = false) String query) {
+        User usuario = getCurrentUser();
 
         List<Reminder> reminderList =
                 (query != null && !query.isBlank())
@@ -53,21 +54,20 @@ public class ReminderController {
                 .toList();
 
         return ResponseEntity.ok(dto);
-
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Obter lembrete", description = "Retorna os detalhes de um lembrete específico do usuário")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getReminder(@PathVariable Long id, @RequestHeader("userID") String userID) {
-
+    public ResponseEntity<?> getReminder(@PathVariable Long id) {
+        User currentUser = getCurrentUser();
         Optional<Reminder> reminderOpt = reminderService.getReminderById(id);
         if (reminderOpt.isEmpty())
             return ResponseEntity.status(404).body("{\"message\": \"Lembrete não encontrado.\"}");
 
         Reminder reminder = reminderOpt.get();
 
-        if (!reminder.getUsuario().getId().equals(Long.parseLong(userID)))
+        if (!reminder.getUsuario().getId().equals(currentUser.getId()))
             return ResponseEntity.status(403).body("{\"message\": \"Acesso negado.\"}");
 
         ReminderDTO dto = new ReminderDTO(
@@ -79,15 +79,14 @@ public class ReminderController {
         );
 
         return ResponseEntity.ok(dto);
-
     }
 
     @PostMapping
     @Operation(summary = "Criar lembrete", description = "Cria um novo lembrete para o usuário")
-    public ResponseEntity<?> createReminder(@Valid @RequestBody ReminderInputDTO dto, @RequestHeader("userID") String userID) {
-
+    public ResponseEntity<?> createReminder(@Valid @RequestBody ReminderInputDTO dto) {
+        User currentUser = getCurrentUser();
         try {
-            Reminder reminder = reminderService.createReminder(dto, Long.parseLong(userID));
+            Reminder reminder = reminderService.createReminder(dto, currentUser.getId());
 
             ReminderDTO out = new ReminderDTO(
                     reminder.getId(),
@@ -103,15 +102,14 @@ public class ReminderController {
             return ResponseEntity.status(400)
                     .body("{\"message\": \"Erro ao criar lembrete: " + e.getMessage() + "\"}");
         }
-
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Atualizar lembrete", description = "Atualiza um lembrete existente do usuário")
-    public ResponseEntity<?> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderInputDTO dto, @RequestHeader("userID") String userID) {
-
+    public ResponseEntity<?> updateReminder(@PathVariable Long id, @Valid @RequestBody ReminderInputDTO dto) {
+        User currentUser = getCurrentUser();
         Optional<Reminder> updated =
-                reminderService.updateReminder(id, dto, Long.parseLong(userID));
+                reminderService.updateReminder(id, dto, currentUser.getId());
 
         if (updated.isEmpty())
             return ResponseEntity.status(404)
@@ -128,22 +126,20 @@ public class ReminderController {
         );
 
         return ResponseEntity.ok(out);
-
     }
 
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Excluir lembrete", description = "Exclui um lembrete existente do usuário")
-    public ResponseEntity<?> deleteReminder(@PathVariable Long id, @RequestHeader("userID") String userID) {
-
-        boolean deleted = reminderService.deleteReminder(id, Long.parseLong(userID));
+    public ResponseEntity<?> deleteReminder(@PathVariable Long id) {
+        User currentUser = getCurrentUser();
+        boolean deleted = reminderService.deleteReminder(id, currentUser.getId());
 
         if (!deleted)
             return ResponseEntity.status(404)
                     .body("{\"message\": \"Lembrete não encontrado ou acesso negado.\"}");
 
         return ResponseEntity.ok("{\"message\": \"Lembrete excluído com sucesso.\"}");
-
     }
 
 }

@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import axios from "axios"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,19 +19,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit, Bell, Clock, X, CheckCircle, RotateCcw } from "lucide-react"
+import { Plus, Trash2, Edit, Bell, Clock, X, CheckCircle, RotateCcw, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-
-interface Reminder {
-  id: number
-  titulo: string
-  descricao: string
-  dataHora: string
-  ativo: boolean
-}
+import {
+  getAllReminders,
+  createReminder,
+  updateReminder,
+  deleteReminder,
+  type Reminder,
+} from "@/lib/api/reminders"
 
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
+  const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
   const [activeReminderPopup, setActiveReminderPopup] = useState<Reminder | null>(null)
@@ -46,8 +45,6 @@ export default function RemindersPage() {
   })
 
   const activeTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map())
-
-  const API_BASE = "http://localhost:8080/api/reminders"
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -66,23 +63,15 @@ export default function RemindersPage() {
     })
   }, [reminders])
 
-  const getUserID = () => {
-    return localStorage.getItem("userID") || "1" // modificar conforme login real
-  }
-
-  const axiosConfig = () => ({
-    headers: {
-      userID: getUserID(),
-      "Content-Type": "application/json",
-    },
-  })
-
   const loadReminders = async () => {
     try {
-      const response = await axios.get(API_BASE, axiosConfig())
-      setReminders(response.data || [])  // Alterado para response.data diretamente
+      setLoading(true)
+      const data = await getAllReminders()
+      setReminders(data || [])
     } catch (error) {
       toast.error("Erro ao carregar lembretes")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -128,14 +117,25 @@ export default function RemindersPage() {
     setActiveReminderPopup(null)
   }
 
-  const handleRemindIn5Minutes = () => {
+  const handleRemindIn5Minutes = async () => {
     if (activeReminderPopup) {
       const newDataHora = new Date(Date.now() + 5 * 60 * 1000).toISOString()
-      updateReminder(activeReminderPopup.id, {
+      const updated = {
         ...activeReminderPopup,
         dataHora: newDataHora,
-      })
-      toast.success("Reagendado para daqui a 5 minutos")
+      }
+      try {
+        await updateReminder(activeReminderPopup.id, {
+          titulo: updated.titulo,
+          descricao: updated.descricao,
+          dataHora: updated.dataHora,
+          ativo: updated.ativo,
+        })
+        setReminders((prev) => prev.map((r) => (r.id === activeReminderPopup.id ? updated : r)))
+        toast.success("Reagendado para daqui a 5 minutos")
+      } catch {
+        toast.error("Erro ao reagendar")
+      }
     }
     setActiveReminderPopup(null)
   }
@@ -156,10 +156,10 @@ export default function RemindersPage() {
 
     try {
       if (editingReminder) {
-        await axios.put(`${API_BASE}/${editingReminder.id}`, payload, axiosConfig())
+        await updateReminder(editingReminder.id, payload)
         toast.success("Lembrete atualizado!")
       } else {
-        await axios.post(API_BASE, payload, axiosConfig())
+        await createReminder(payload)
         toast.success("Lembrete criado!")
       }
 
@@ -170,21 +170,6 @@ export default function RemindersPage() {
     }
   }
 
-  const updateReminder = async (id: number, updated: Reminder) => {
-    const payload = {
-      titulo: updated.titulo,
-      descricao: updated.descricao,
-      dataHora: updated.dataHora,
-      ativo: updated.ativo,
-    }
-
-    try {
-      await axios.put(`${API_BASE}/${id}`, payload, axiosConfig())
-      setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)))
-    } catch {
-      toast.error("Erro ao atualizar")
-    }
-  }
 
   const resetForm = () => {
     setFormData({ titulo: "", descricao: "", dataHora: "", ativo: true })
@@ -205,7 +190,7 @@ export default function RemindersPage() {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`${API_BASE}/${id}`, axiosConfig())
+      await deleteReminder(id)
       setReminders((prev) => prev.filter((r) => r.id !== id))
       stopReminderTimer(id)
       toast.success("Lembrete excluído!")
@@ -228,7 +213,7 @@ export default function RemindersPage() {
     }
 
     try {
-      await axios.put(`${API_BASE}/${id}`, payload, axiosConfig())
+      await updateReminder(id, payload)
       setReminders((prev) => prev.map((r) => (r.id === id ? { ...r, ativo } : r)))
       if (!ativo) stopReminderTimer(id)
     } catch {
@@ -238,6 +223,17 @@ export default function RemindersPage() {
 
   const getIntervalText = (r: Reminder) =>
       `Próximo: ${new Date(r.dataHora).toLocaleString("pt-BR")}`
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
+  }
 
   return (
       <div className="flex min-h-screen">

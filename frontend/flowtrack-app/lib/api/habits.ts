@@ -15,7 +15,7 @@ export interface Habito {
   tipoFrequencia: "DIARIO" | "SEMANAL"
   cor: string
   icone: string
-  progresso: ProgressoHabito
+  progresso?: ProgressoHabito | null
 }
 
 export interface HabitCreateRequest extends Omit<Habito, "id" | "progresso"> {}
@@ -53,9 +53,11 @@ export async function deleteHabit(habitId: number): Promise<void> {
 }
 
 export async function addCompleteDay(habitId: number): Promise<ProgressoHabito> {
-  return apiRequest<ProgressoHabito>(`/habits/${habitId}/completar-dia`, {
+  
+  const response = await apiRequest<ProgressoHabito>(`/habits/${habitId}/completar-dia`, {
     method: "POST",
   })
+  return response
 }
 
 export async function getHabitProgress(habitId: number): Promise<ProgressoHabito> {

@@ -19,6 +19,10 @@ export interface User {
  */
 export interface UserRegisterDTO {
   nome: string
+  cpf?: string
+  dataNascimento?: string
+  telefone?: string
+  endereco?: string
   email: string
   senha: string
 }
@@ -29,6 +33,14 @@ export interface UserRegisterDTO {
 export interface UserLoginDTO {
   email: string
   senha: string
+}
+
+/**
+ * Resposta de autenticação com token JWT
+ */
+export interface AuthResponse {
+  token: string
+  user: User
 }
 
 /**
@@ -54,10 +66,18 @@ export interface GetAllUsersParams {
 // --- FUNÇÕES DE AUTENTICAÇÃO ---
 
 /**
- * Registrar novo usuário
+ * Interface de resposta de registro
  */
-export async function registerUser(dto: UserRegisterDTO): Promise<User> {
-  return apiRequest<User>("/auth/register", {
+export interface RegisterResponse {
+  message: string
+}
+
+/**
+ * Registrar novo usuário
+ * Retorna apenas uma mensagem de sucesso (sem token)
+ */
+export async function registerUser(dto: UserRegisterDTO): Promise<RegisterResponse> {
+  return apiRequest<RegisterResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify(dto),
   })
@@ -66,10 +86,10 @@ export async function registerUser(dto: UserRegisterDTO): Promise<User> {
 /**
  * Login de usuário
  *
- * Retorna o usuário completo se email e senha estiverem corretos
+ * Retorna o token JWT e o usuário completo se email e senha estiverem corretos
  */
-export async function loginUser(dto: UserLoginDTO): Promise<User> {
-  return apiRequest<User>("/auth/login", {
+export async function loginUser(dto: UserLoginDTO): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(dto),
   })

@@ -17,6 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { LayoutDashboard, Mail, Lock, Chrome, AlertCircle, CheckCircle2 } from "lucide-react"
 import { loginUser } from "@/lib/api/users"
+import { setToken } from "@/lib/api/config"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,18 +45,21 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const user = await loginUser({ email: formData.email, senha: formData.password })
+      const authResponse = await loginUser({ email: formData.email, senha: formData.password })
+
+      // Armazena o token JWT
+      setToken(authResponse.token)
 
       // Armazena informações básicas no localStorage
       localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("userEmail", user.email)
-      localStorage.setItem("userName", user.nome)
-      localStorage.setItem("isAdmin", user.role === "ADMIN" ? "true" : "false")
+      localStorage.setItem("userEmail", authResponse.user.email)
+      localStorage.setItem("userName", authResponse.user.nome)
+      localStorage.setItem("isAdmin", authResponse.user.role === "ADMIN" ? "true" : "false")
 
       setSuccessMsg("Login realizado com sucesso! Redirecionando...")
 
       setTimeout(() => {
-        router.push(user.role === "ADMIN" ? "/admin" : "/")
+        router.push(authResponse.user.role === "ADMIN" ? "/admin" : "/")
       }, 1200)
     } catch (err: any) {
       console.error(err)

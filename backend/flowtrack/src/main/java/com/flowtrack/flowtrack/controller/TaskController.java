@@ -65,7 +65,21 @@ public class TaskController {
     })
     @PostMapping
     public ResponseEntity<TaskDTO> createTask(@RequestBody TaskDTO taskDTO) {
-        return new ResponseEntity<TaskDTO>(taskService.createTask(taskDTO), HttpStatus.CREATED);
+        System.out.println("[TASK CONTROLLER] Recebida requisição POST /api/tasks");
+        System.out.println("  - TaskDTO recebido: " + taskDTO);
+        System.out.println("  - dataConclusao recebida: " + taskDTO.getDataConclusao());
+        System.out.println("  - dataCriacao recebida: " + taskDTO.getDataCriacao());
+        System.out.println("  - titulo: " + taskDTO.getTitulo());
+        System.out.println("  - categoriaId: " + taskDTO.getCategoriaId());
+        
+        TaskDTO created = taskService.createTask(taskDTO);
+        
+        System.out.println("[TASK CONTROLLER] TaskDTO retornado:");
+        System.out.println("  - ID: " + created.getId());
+        System.out.println("  - dataCriacao retornada: " + created.getDataCriacao());
+        System.out.println("  - dataConclusao retornada: " + created.getDataConclusao());
+        
+        return new ResponseEntity<TaskDTO>(created, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Atualizar tarefa", description = "Atualiza os dados de uma tarefa existente.")

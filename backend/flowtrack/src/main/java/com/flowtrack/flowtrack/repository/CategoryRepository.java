@@ -1,6 +1,7 @@
 package com.flowtrack.flowtrack.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,9 +10,19 @@ import org.springframework.stereotype.Repository;
 
 import com.flowtrack.flowtrack.dto.CategoryDTO;
 import com.flowtrack.flowtrack.model.Category;
+import com.flowtrack.flowtrack.model.User;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
+    
+    Optional<Category> findByIdAndUser(Long id, User user);
+    
+    List<Category> findByUser(User user);
+    
+    @Query("SELECT c FROM Category c WHERE c.id = :id AND " +
+           "(c.user = :user OR (c.user IS NULL AND c.id NOT IN " +
+           "(SELECT hc.id FROM User u JOIN u.hiddenCategories hc WHERE u = :user)))")
+    Optional<Category> findByIdAndVisibleForUser(@Param("id") Long id, @Param("user") User user);
     
     @Query("SELECT new com.flowtrack.flowtrack.dto.CategoryDTO(" +
            "    c.id, c.name, c.color, " +
@@ -19,10 +30,10 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
            "    COUNT(t) " +
            ") " +
            "FROM Category c " +
-           "LEFT JOIN Task t ON t.category = c " +
-           "WHERE (c.user.id = :userId " +
+           "LEFT JOIN Task t ON t.category = c AND t.usuario = :user " +
+           "WHERE (c.user = :user " +
            "       OR (c.user IS NULL AND c.id NOT IN " +
-           "           (SELECT hc.id FROM User u JOIN u.hiddenCategories hc WHERE u.id = :userId))) " +
+           "           (SELECT hc.id FROM User u JOIN u.hiddenCategories hc WHERE u = :user))) " +
            "GROUP BY c.id, c.name, c.color, c.user")
-    List<CategoryDTO> findVisibleCategoriesWithCount(@Param("userId") Long userId);
+    List<CategoryDTO> findVisibleCategoriesWithCount(@Param("user") User user);
 }

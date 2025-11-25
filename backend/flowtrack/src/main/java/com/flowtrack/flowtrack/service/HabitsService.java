@@ -8,10 +8,14 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.flowtrack.flowtrack.dto.HabitsDTO;
+import com.flowtrack.flowtrack.exception.ResourceNotFoundException;
 import com.flowtrack.flowtrack.model.Habits;
 import com.flowtrack.flowtrack.model.ProgressHabit;
 import com.flowtrack.flowtrack.model.TipoFrequencia;
+import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.HabitsRepository;
+import com.flowtrack.flowtrack.util.DateUtil;
+import com.flowtrack.flowtrack.util.SecurityUtil;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -27,7 +31,11 @@ public class HabitsService {
 
     @Transactional
     public Habits createHabit(HabitsDTO habitDTO) {
-        System.out.println("Entrou no service");
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
         ProgressHabit progresso = new ProgressHabit();
 
         Habits habit = new Habits();
@@ -37,33 +45,40 @@ public class HabitsService {
         habit.setTipoFrequencia(habitDTO.getTipoFrequencia());
         habit.setCor(habitDTO.getCor());
         habit.setIcone(habitDTO.getIcone());
-        habit.setUsuario(null);
+        habit.setUsuario(currentUser);
         habit.setProgresso(progresso);
         progresso.setHabits(habit);
         
         Habits savedHabit = habitsRepository.save(habit);
 
-        System.out.println("Salvou");
-
         return savedHabit;
     }
     
     public Habits getHabitById(Long id) {
-        return habitsRepository.findById(id)
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        return habitsRepository.findByIdAndUsuario(id, currentUser)
                 .orElseThrow(() -> new EntityNotFoundException("Hábito não encontrado com id: " + id));
     }
 
-    public Optional<Habits> getHabitByUser(Long usuarioId) {
-        return habitsRepository.findByUsuarioId(usuarioId);
-    }
-
     public List<Habits> getAllHabits() {
-        return habitsRepository.findAll();
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        return habitsRepository.findByUsuario(currentUser);
     }
 
     @Transactional 
     public Habits updateHabit(Long id, Habits updatedHabit) {
-        Habits habit = habitsRepository.findById(id)
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
+        Habits habit = habitsRepository.findByIdAndUsuario(id, currentUser)
                 .orElseThrow(() -> new EntityNotFoundException("Hábito não encontrado com id: " + id));
 
         habit.setNome(updatedHabit.getNome());
@@ -78,17 +93,31 @@ public class HabitsService {
 
     @Transactional
     public void deleteHabit(Long id) {
-        if (!habitsRepository.existsById(id)) {
-            throw new EntityNotFoundException("Hábito não encontrado com id: " + id);
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
         }
 
-        habitsRepository.deleteById(id);
+        Habits habit = habitsRepository.findByIdAndUsuario(id, currentUser)
+                .orElseThrow(() -> new EntityNotFoundException("Hábito não encontrado com id: " + id));
+
+        habitsRepository.delete(habit);
     }
 
     @Transactional 
     public ProgressHabit addCompleteDay(Long habitId) {
-        LocalDate hoje = LocalDate.now();
-        Habits habit = habitsRepository.findById(habitId)
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
+        LocalDate hoje = DateUtil.hoje();
+        System.out.println("[HABITS SERVICE] Adicionando dia concluído:");
+        System.out.println("  - Habit ID: " + habitId);
+        System.out.println("  - Data de hoje (Brasília): " + hoje);
+        System.out.println("  - Data atual do sistema: " + java.time.LocalDate.now());
+        
+        Habits habit = habitsRepository.findByIdAndUsuario(habitId, currentUser)
                 .orElseThrow(() -> new EntityNotFoundException("Hábito não encontrado com id: " + habitId));
         
         ProgressHabit progresso = habit.getProgresso();
@@ -96,20 +125,35 @@ public class HabitsService {
         if (progresso == null) {
             progresso = new ProgressHabit();
             habit.setProgresso(progresso);
+            System.out.println("  - Progresso criado (não existia)");
         }
+        
+        System.out.println("  - Dias concluídos antes: " + progresso.getDiasConcluidos());
+        System.out.println("  - Já contém hoje? " + progresso.getDiasConcluidos().contains(hoje));
         
         if (!progresso.getDiasConcluidos().contains(hoje)) {
             progresso.getDiasConcluidos().add(hoje);
+            System.out.println("  - Dia adicionado: " + hoje);
+            System.out.println("  - Dias concluídos depois: " + progresso.getDiasConcluidos());
 
             calcularSequencia(progresso, habit.getTipoFrequencia());
+        } else {
+            System.out.println("  - Dia já estava concluído, não adicionado novamente");
         }
 
-        habitsRepository.save(habit);
+        Habits savedHabit = habitsRepository.save(habit);
+        System.out.println("  - Hábito salvo. Dias concluídos finais: " + savedHabit.getProgresso().getDiasConcluidos());
+        
         return progresso;
     }
 
     public double calcularProgresso(Long habitId) {
-        Habits habit = habitsRepository.findById(habitId)
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("Usuário não autenticado");
+        }
+        
+        Habits habit = habitsRepository.findByIdAndUsuario(habitId, currentUser)
                 .orElseThrow(() -> new EntityNotFoundException("Hábito não encontrado com id: " + habitId));
 
         ProgressHabit progresso = habit.getProgresso();
@@ -165,7 +209,7 @@ public class HabitsService {
     }
 
     private int calculaSequeciaAtual(List<LocalDate> diasCompletos, int sequenciaAtual) {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = DateUtil.hoje();
 
         if (diasCompletos.contains(hoje) || diasCompletos.contains(hoje.minusDays(1))) {
             LocalDate diaParaChecar = diasCompletos.contains(hoje) ? hoje : hoje.minusDays(1);

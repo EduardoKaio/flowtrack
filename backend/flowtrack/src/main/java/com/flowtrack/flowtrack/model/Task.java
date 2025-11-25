@@ -33,7 +33,6 @@ public class Task {
     @JsonIgnore
     private Category category;   
 
-    // solucao temporaria aguardando implementacao de autenticacao
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = true)
     private User usuario;

@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   Shield,
+  Lightbulb,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/user-menu"
@@ -27,7 +28,8 @@ const navigation = [
   { name: "Tarefas", href: "/tarefas", icon: CheckSquare },
   { name: "Categorias", href: "/categorias", icon: FolderKanban },
   { name: "Hábitos", href: "/habitos", icon: Target },
-  // { name: "Rotina", href: "/rotina", icon: Calendar },
+  { name: "Notas", href: "/notas", icon: Lightbulb },
+  { name: "Rotina", href: "/rotina", icon: Calendar },
   { name: "Foco", href: "/foco", icon: Timer },
   { name: "Lembretes", href: "/lembretes", icon: Bell },
   { name: "Bem-estar", href: "/bem-estar", icon: Heart },

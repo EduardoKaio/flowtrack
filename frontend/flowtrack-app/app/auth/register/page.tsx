@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator"
 import { AlertCircle, CheckCircle2, LayoutDashboard, Mail, Lock, User, Chrome } from "lucide-react"
 import { registerUser } from "@/lib/api/users"
+import { setToken } from "@/lib/api/config"
 import { cn } from "@/lib/utils"
 
 export default function RegisterPage() {
@@ -35,23 +36,43 @@ export default function RegisterPage() {
       return
     }
 
+    if (formData.senha.length < 6) {
+      setErrorMsg("A senha deve ter pelo menos 6 caracteres.")
+      return
+    }
+
     setIsLoading(true)
     try {
-      await registerUser({
+      const response = await registerUser({
         nome: formData.nome,
         email: formData.email,
         senha: formData.senha,
       })
 
-      setSuccessMsg("Conta criada com sucesso! Redirecionando para o login...")
+      // Mostra mensagem de sucesso
+      setSuccessMsg("Conta criada com sucesso! Redirecionando para login...")
+      
+      // Limpa o formulário
+      setFormData({
+        nome: "",
+        email: "",
+        senha: "",
+        confirmPassword: "",
+      })
+
+      // Redireciona para login após 2 segundos
       setTimeout(() => {
         router.push("/auth/login?registered=true")
-      }, 1500)
+      }, 2000)
     } catch (error: any) {
-      console.error(error)
-      // Tratamento amigável para email duplicado
-      if (error.message?.includes("duplicate key value") || error.message?.includes("users_email_key")) {
+      console.error("Erro ao registrar:", error)
+      // Tratamento amigável para erros
+      if (error.message?.includes("duplicate key value") || error.message?.includes("users_email_key") || error.message?.includes("já está cadastrado")) {
         setErrorMsg("Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.")
+      } else if (error.message?.includes("inválido")) {
+        setErrorMsg("O email informado é inválido.")
+      } else if (error.message) {
+        setErrorMsg(error.message)
       } else {
         setErrorMsg("Erro ao criar usuário. Verifique os dados e tente novamente.")
       }

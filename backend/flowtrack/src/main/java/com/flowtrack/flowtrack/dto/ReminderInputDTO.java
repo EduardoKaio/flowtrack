@@ -14,6 +14,7 @@ public class ReminderInputDTO {
     private String titulo;
     private String descricao;
     @NotNull
-    private LocalDateTime dataHora;  // Remova @JsonFormat
+    private LocalDateTime dataHora; 
     private boolean ativo;
+    
 }

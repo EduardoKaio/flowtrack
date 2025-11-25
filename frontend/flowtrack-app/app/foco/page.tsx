@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, RotateCcw, Settings, Clock, Coffee, Target, Maximize, Minimize } from "lucide-react"
+import { Play, Pause, RotateCcw, Settings, Clock, Coffee, Target, Maximize, Minimize, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -57,6 +57,7 @@ export default function FocusPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [loading, setLoading] = useState(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   interface BackendFocusSession {
@@ -69,7 +70,7 @@ export default function FocusPage() {
 
   useEffect(() => {
     const loadData = async () => {
-
+      setLoading(true)
       try {
         const settingsFromDB = await getPomodoroSettings()
         if (settingsFromDB) {
@@ -79,6 +80,7 @@ export default function FocusPage() {
         }
       } catch (error) {
         console.error("Erro ao carregar configurações", error)
+        // Se der erro 404, usar configurações padrão
       }
 
       try {
@@ -94,6 +96,8 @@ export default function FocusPage() {
         setSessions(frontendSessions)
       } catch (error) {
         console.error("Erro ao carregar sessões", error)
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -261,6 +265,17 @@ export default function FocusPage() {
     } else {
       document.exitFullscreen().then(() => setIsFullscreen(false))
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 lg:pl-64 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
 
   // Render Fullscreen
