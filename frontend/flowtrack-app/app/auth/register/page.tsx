@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { AlertCircle, CheckCircle2, LayoutDashboard, Mail, Lock, User, Chrome } from "lucide-react"
+import { AlertCircle, CheckCircle2, LayoutDashboard, Mail, Lock, User, Chrome, Phone, MapPin, Calendar, CreditCard } from "lucide-react"
 import { registerUser } from "@/lib/api/users"
 import { setToken } from "@/lib/api/config"
 import { cn } from "@/lib/utils"
@@ -21,6 +21,10 @@ export default function RegisterPage() {
     email: "",
     senha: "",
     confirmPassword: "",
+    cpf: "",
+    dataNascimento: "",
+    telefone: "",
+    endereco: "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -47,17 +51,25 @@ export default function RegisterPage() {
         nome: formData.nome,
         email: formData.email,
         senha: formData.senha,
+        cpf: formData.cpf,
+        dataNascimento: formData.dataNascimento,
+        telefone: formData.telefone,
+        endereco: formData.endereco,
       })
 
       // Mostra mensagem de sucesso
       setSuccessMsg("Conta criada com sucesso! Redirecionando para login...")
-      
+
       // Limpa o formulário
       setFormData({
         nome: "",
         email: "",
         senha: "",
         confirmPassword: "",
+        cpf: "",
+        dataNascimento: "",
+        telefone: "",
+        endereco: "",
       })
 
       // Redireciona para login após 2 segundos
@@ -67,8 +79,13 @@ export default function RegisterPage() {
     } catch (error: any) {
       console.error("Erro ao registrar:", error)
       // Tratamento amigável para erros
-      if (error.message?.includes("duplicate key value") || error.message?.includes("users_email_key") || error.message?.includes("já está cadastrado")) {
+      // Tratamento amigável para erros
+      if (error.message?.includes("duplicate key value") || error.message?.includes("users_email_key")) {
         setErrorMsg("Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.")
+      } else if (error.message?.includes("CPF já está cadastrado")) {
+        setErrorMsg("Este CPF já está cadastrado.")
+      } else if (error.message?.includes("email já está cadastrado")) {
+        setErrorMsg("Este e-mail já está cadastrado.")
       } else if (error.message?.includes("inválido")) {
         setErrorMsg("O email informado é inválido.")
       } else if (error.message) {
@@ -137,6 +154,67 @@ export default function RegisterPage() {
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="cpf"
+                    type="text"
+                    placeholder="000.000.000-00"
+                    className="pl-10"
+                    value={formData.cpf}
+                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="dataNascimento"
+                    type="date"
+                    className="pl-10"
+                    value={formData.dataNascimento}
+                    onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="telefone"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    className="pl-10"
+                    value={formData.telefone}
+                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endereco">Endereço</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="endereco"
+                    type="text"
+                    placeholder="Seu endereço completo"
+                    className="pl-10"
+                    value={formData.endereco}
+                    onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
                   />
                 </div>
               </div>
