@@ -63,7 +63,7 @@ export default function LoginPage() {
       }, 1200)
     } catch (err: any) {
       console.error(err)
-      setErrorMsg("Email e/ou senha incorretos. Verifique seus dados e tente novamente.")
+      setErrorMsg(err.message || "Email e/ou senha incorretos. Verifique seus dados e tente novamente.")
     } finally {
       setIsLoading(false)
     }

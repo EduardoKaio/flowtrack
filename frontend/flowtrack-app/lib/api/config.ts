@@ -71,7 +71,7 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
         data = null
       } else if (isJson) {
         // Se for JSON, usar response.json() diretamente
-      data = await response.json()
+        data = await response.json()
       } else {
         // Se não for JSON, ler como texto e tentar parsear
         const text = await response.text()
@@ -112,9 +112,11 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
         console.warn(`[API] Authentication error (${response.status}) for ${endpoint}. Token: ${token ? 'present' : 'missing'}`)
         removeToken()
         localStorage.removeItem("isAuthenticated")
-        if (typeof window !== "undefined") {
+        
+        if (typeof window !== "undefined" && !endpoint.startsWith("/auth/")) {
           window.location.href = "/auth/login"
         }
+        
         const message = data?.message || `Erro de autenticação: ${response.status} ${response.statusText}`
         throw new Error(message)
       }
