@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit, Search, Archive, Clock } from "lucide-react"
+import { getNotes, createNote, editNote, deleteNote, toggleArchiveNote } from "@/lib/api/notas";
 
 interface Note {
   id: number
@@ -42,26 +43,7 @@ const colorOptions = [
 ]
 
 export default function NotesPage() {
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: 1,
-      title: "Ideias para Projeto",
-      content: "- Implementar autenticação com OAuth\n- Adicionar notificações push\n- Melhorar performance",
-      color: "blue",
-      archived: false,
-      createdAt: "2025-10-15T10:30:00",
-      updatedAt: "2025-10-15T10:30:00",
-    },
-    {
-      id: 2,
-      title: "Pontos de Melhoria",
-      content: "A interface pode ser mais intuitiva. Considerar feedback dos usuários.",
-      color: "yellow",
-      archived: false,
-      createdAt: "2025-10-14T14:20:00",
-      updatedAt: "2025-10-14T14:20:00",
-    },
-  ])
+  const [notes, setNotes] = useState<Note[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
@@ -82,33 +64,44 @@ export default function NotesPage() {
     }
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const now = new Date().toISOString()
+  useEffect(() => {
+    loadNotes()
+  }, [])
 
-    if (editingNote) {
-      setNotes(
-        notes.map((note) =>
-          note.id === editingNote.id
-            ? {
-                ...note,
-                ...formData,
-                updatedAt: now,
-              }
-            : note,
-        ),
-      )
-    } else {
-      const newNote: Note = {
-        id: Date.now(),
-        ...formData,
-        archived: false,
-        createdAt: now,
-        updatedAt: now,
-      }
-      setNotes([newNote, ...notes])
+  const loadNotes = async () => {
+    try {
+      const data = await getNotes()
+      console.log("Notas carregadas: ", data)
+      setNotes(data)
+    } catch (error) {
+      console.error("Erro ao carregar notas:", error)
     }
-    resetForm()
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      if (editingNote) {
+        console.log("Antes de chamar a edição: ", formData)        
+        const updatedNote = await editNote(editingNote.id, formData)
+        console.log("Depois de chamar a edição: ", updatedNote)
+
+        setNotes((prevNotes) =>
+          prevNotes.map((note) => (note.id === editingNote.id ? updatedNote : note))
+        )
+      } else {
+        console.log("Antes de chamar a criação: ", formData)
+        const newNote = await createNote(formData)
+        console.log("depois de chamar a criação: ", newNote)
+        
+        setNotes((prevNotes) => [newNote, ...prevNotes])
+      }
+      
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao salvar nota:", error)
+    }
   }
 
   const resetForm = () => {
@@ -131,12 +124,27 @@ export default function NotesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setNotes(notes.filter((note) => note.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteNote(id)
+      setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id))
+    } catch (error) {
+      console.error("Erro ao deletar nota:", error)
+    }
   }
 
-  const toggleArchive = (id: number) => {
-    setNotes(notes.map((note) => (note.id === id ? { ...note, archived: !note.archived } : note)))
+  const toggleArchive = async (id: number) => {
+    try {
+      await toggleArchiveNote(id)
+      
+      setNotes((prevNotes) =>
+        prevNotes.map((note) => 
+          note.id === id ? { ...note, archived: !note.archived } : note
+        )
+      )
+    } catch (error) {
+      console.error("Erro ao arquivar nota:", error)
+    }
   }
 
   const getColorStyles = (color: string) => {
