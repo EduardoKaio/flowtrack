@@ -245,7 +245,7 @@ export default function HabitsPage() {
   }
 
   const getWeekdayLabel = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(`${dateString}T12:00:00`)
     return date.toLocaleDateString("pt-BR", { weekday: "short" }).charAt(0).toUpperCase()
   }
 

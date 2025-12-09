@@ -156,6 +156,21 @@ export default function TasksPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+
+    if (formData.dataConclusao) {
+        const selectedDate = new Date(formData.dataConclusao + "T12:00:00");
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); 
+        
+        selectedDate.setHours(0, 0, 0, 0);
+
+        if (selectedDate < today) {
+            setError("A data de conclusão não pode ser anterior a hoje.");
+            return;
+        }
+    }
 
     try {
       let selectedCategory = categories.find(c => c.name === formData.categoria);
@@ -392,6 +407,11 @@ export default function TasksPage() {
                           />
                         </div>
                       </div>
+                      {error && (
+                        <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+                          {error}
+                        </div>
+                      )}
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={resetForm}>
                           Cancelar
