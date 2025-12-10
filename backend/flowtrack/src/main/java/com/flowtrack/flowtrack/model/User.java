@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.persistence.*;
+import jdk.jshell.Snippet;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,10 +23,10 @@ public class User {
 
     @Column(unique = true, nullable = false, length = 150)
     private String email;
-    
+
     @Column(nullable = false)
     private String senha;
-    
+
     @Column(nullable = false, length = 20)
     private String role; // "ADMIN" ou "USER"
 
@@ -40,5 +41,6 @@ public class User {
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> hiddenCategories = new HashSet<>();
+
 }
 

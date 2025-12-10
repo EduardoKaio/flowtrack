@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -23,15 +21,21 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Edit, CheckCircle2, Circle, Sunrise, Sun, Sunset } from "lucide-react"
+import axios from "axios"
+
+// Axios instance
+const api = axios.create({
+  baseURL: "http://localhost:8080/api",
+  headers: { "Content-Type": "application/json" },
+})
 
 interface RoutineActivity {
   id: number
   title: string
   description: string
-  time: string
   duration: number
-  period: "morning" | "afternoon" | "evening"
-  days: string[]
+  period: "MORNING" | "AFTERNOON" | "EVENING"
+  days: string
   completed: boolean
 }
 
@@ -46,102 +50,63 @@ const daysOfWeek = [
 ]
 
 export default function RoutinePage() {
-  const [activities, setActivities] = useState<RoutineActivity[]>([
-    {
-      id: 1,
-      title: "Meditação",
-      description: "10 minutos de meditação guiada",
-      time: "06:30",
-      duration: 10,
-      period: "morning",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Exercícios",
-      description: "Treino funcional",
-      time: "07:00",
-      duration: 30,
-      period: "morning",
-      days: ["seg", "qua", "sex"],
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Revisão de Tarefas",
-      description: "Planejar o dia",
-      time: "09:00",
-      duration: 15,
-      period: "morning",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 4,
-      title: "Almoço",
-      description: "Refeição saudável",
-      time: "12:30",
-      duration: 45,
-      period: "afternoon",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 5,
-      title: "Leitura",
-      description: "30 páginas do livro atual",
-      time: "20:00",
-      duration: 30,
-      period: "evening",
-      days: ["seg", "ter", "qua", "qui", "sex", "sab", "dom"],
-      completed: false,
-    },
-  ])
-
+  const [activities, setActivities] = useState<RoutineActivity[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingActivity, setEditingActivity] = useState<RoutineActivity | null>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState<"all" | "morning" | "afternoon" | "evening">("all")
-
+  const [selectedPeriod, setSelectedPeriod] = useState<"all" | "MORNING" | "AFTERNOON" | "EVENING">("all")
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    time: "",
     duration: 15,
-    period: "morning" as "morning" | "afternoon" | "evening",
+    period: "MORNING" as "MORNING" | "AFTERNOON" | "EVENING",
     days: [] as string[],
   })
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingActivity) {
-      setActivities(
-        activities.map((activity) =>
-          activity.id === editingActivity.id ? { ...activity, ...formData, completed: activity.completed } : activity,
-        ),
-      )
-    } else {
-      const newActivity: RoutineActivity = {
-        id: Date.now(),
-        ...formData,
-        completed: false,
+  useEffect(() => {
+    async function loadRoutines() {
+      try {
+        const response = await api.get<RoutineActivity[]>("/routines/all")
+        setActivities(response.data)
+      } catch (err) {
+        console.error("Erro ao carregar rotinas", err)
+        setError("Erro ao carregar rotinas")
       }
-      setActivities([...activities, newActivity])
     }
-    resetForm()
-  }
+    loadRoutines()
+  }, [])
 
   const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      time: "",
-      duration: 15,
-      period: "morning",
-      days: [],
-    })
+    setFormData({ title: "", description: "", duration: 15, period: "MORNING", days: [] })
     setEditingActivity(null)
     setIsDialogOpen(false)
+    setError(null)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        duration: formData.duration,
+        period: formData.period,
+        days: formData.days.join(","), // Envia string separada por vírgula
+      }
+
+      if (editingActivity) {
+        const response = await api.put<RoutineActivity>(`/routines/${editingActivity.id}`, payload)
+        setActivities(activities.map(a => (a.id === response.data.id ? response.data : a)))
+      } else {
+        const response = await api.post<RoutineActivity>("/routines", payload)
+        setActivities([...activities, response.data])
+      }
+
+      resetForm()
+    } catch (err) {
+      console.error("Erro ao salvar rotina", err)
+      setError("Erro ao salvar rotina")
+    }
   }
 
   const handleEdit = (activity: RoutineActivity) => {
@@ -149,78 +114,47 @@ export default function RoutinePage() {
     setFormData({
       title: activity.title,
       description: activity.description,
-      time: activity.time,
       duration: activity.duration,
       period: activity.period,
-      days: activity.days,
+      days: activity.days.split(","), // Converte string em array para os botões
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setActivities(activities.filter((activity) => activity.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await api.delete(`/routines/${id}`)
+      setActivities(activities.filter(a => a.id !== id))
+    } catch (err) {
+      console.error("Erro ao deletar rotina", err)
+      setError("Erro ao deletar rotina")
+    }
   }
 
-  const toggleComplete = (id: number) => {
-    setActivities(
-      activities.map((activity) => (activity.id === id ? { ...activity, completed: !activity.completed } : activity)),
-    )
+  const toggleComplete = async (id: number) => {
+    try {
+      const response = await api.patch<RoutineActivity>(`/routines/${id}/toggle`)
+      setActivities(activities.map(a => (a.id === response.data.id ? response.data : a)))
+    } catch (err) {
+      console.error("Erro ao alternar conclusão", err)
+      setError("Erro ao alternar conclusão")
+    }
   }
 
   const toggleDay = (day: string) => {
     setFormData({
       ...formData,
-      days: formData.days.includes(day) ? formData.days.filter((d) => d !== day) : [...formData.days, day],
+      days: formData.days.includes(day) ? formData.days.filter(d => d !== day) : [...formData.days, day],
     })
   }
 
   const filteredActivities = activities
-    .filter((activity) => selectedPeriod === "all" || activity.period === selectedPeriod)
-    .sort((a, b) => a.time.localeCompare(b.time))
-
-  const getPeriodIcon = (period: string) => {
-    switch (period) {
-      case "morning":
-        return <Sunrise className="h-5 w-5" />
-      case "afternoon":
-        return <Sun className="h-5 w-5" />
-      case "evening":
-        return <Sunset className="h-5 w-5" />
-      default:
-        return null
-    }
-  }
-
-  const getPeriodLabel = (period: string) => {
-    switch (period) {
-      case "morning":
-        return "Manhã"
-      case "afternoon":
-        return "Tarde"
-      case "evening":
-        return "Noite"
-      default:
-        return ""
-    }
-  }
-
-  const getPeriodColor = (period: string) => {
-    switch (period) {
-      case "morning":
-        return "bg-orange-500/10 text-orange-700 border-orange-200"
-      case "afternoon":
-        return "bg-blue-500/10 text-blue-700 border-blue-200"
-      case "evening":
-        return "bg-purple-500/10 text-purple-700 border-purple-200"
-      default:
-        return ""
-    }
-  }
+    .filter(a => selectedPeriod === "all" || a.period === selectedPeriod)
+    .sort((a, b) => a.title.localeCompare(b.title))
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-
       <main className="flex-1 lg:pl-64">
         <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <PageHeader
@@ -230,8 +164,7 @@ export default function RoutinePage() {
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={() => setEditingActivity(null)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nova Atividade
+                    <Plus className="h-4 w-4 mr-2" /> Nova Atividade
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
@@ -239,85 +172,58 @@ export default function RoutinePage() {
                     <DialogHeader>
                       <DialogTitle>{editingActivity ? "Editar Atividade" : "Nova Atividade"}</DialogTitle>
                       <DialogDescription>
-                        {editingActivity
-                          ? "Atualize as informações da atividade"
-                          : "Adicione uma nova atividade à sua rotina"}
+                        {editingActivity ? "Atualize as informações da atividade" : "Adicione uma nova atividade"}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="title">Título</Label>
+                        <Label>Título</Label>
                         <Input
-                          id="title"
                           value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          placeholder="Ex: Meditação matinal"
+                          onChange={e => setFormData({ ...formData, title: e.target.value })}
                           required
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="description">Descrição</Label>
+                        <Label>Descrição</Label>
                         <Textarea
-                          id="description"
                           value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          placeholder="Detalhes da atividade"
-                          rows={2}
+                          onChange={e => setFormData({ ...formData, description: e.target.value })}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="time">Horário</Label>
-                          <Input
-                            id="time"
-                            type="time"
-                            value={formData.time}
-                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="duration">Duração (min)</Label>
-                          <Input
-                            id="duration"
-                            type="number"
-                            min="5"
-                            step="5"
-                            value={formData.duration}
-                            onChange={(e) => setFormData({ ...formData, duration: Number.parseInt(e.target.value) })}
-                            required
-                          />
-                        </div>
+                      <div className="grid gap-2">
+                        <Label>Duração (min)</Label>
+                        <Input
+                          type="number"
+                          min={5}
+                          step={5}
+                          value={formData.duration}
+                          onChange={e => setFormData({ ...formData, duration: Number(e.target.value) })}
+                        />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="period">Período</Label>
-                        <Select
-                          value={formData.period}
-                          onValueChange={(value) =>
-                            setFormData({ ...formData, period: value as "morning" | "afternoon" | "evening" })
-                          }
-                        >
-                          <SelectTrigger id="period">
+                        <Label>Período</Label>
+                        <Select value={formData.period} onValueChange={v => setFormData({ ...formData, period: v as any })}>
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="morning">Manhã</SelectItem>
-                            <SelectItem value="afternoon">Tarde</SelectItem>
-                            <SelectItem value="evening">Noite</SelectItem>
+                            <SelectItem value="MORNING">Manhã</SelectItem>
+                            <SelectItem value="AFTERNOON">Tarde</SelectItem>
+                            <SelectItem value="EVENING">Noite</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="grid gap-2">
                         <Label>Dias da Semana</Label>
                         <div className="flex flex-wrap gap-2">
-                          {daysOfWeek.map((day) => (
+                          {daysOfWeek.map(day => (
                             <Button
                               key={day.id}
                               type="button"
                               variant={formData.days.includes(day.id) ? "default" : "outline"}
                               size="sm"
                               onClick={() => toggleDay(day.id)}
-                              className="w-14"
                             >
                               {day.label}
                             </Button>
@@ -326,9 +232,7 @@ export default function RoutinePage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancelar
-                      </Button>
+                      <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
                       <Button type="submit">{editingActivity ? "Atualizar" : "Criar"}</Button>
                     </DialogFooter>
                   </form>
@@ -336,104 +240,38 @@ export default function RoutinePage() {
               </Dialog>
             }
           />
+          {error && <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>}
 
-          {/* Period Filter */}
-          <Tabs
-            value={selectedPeriod}
-            onValueChange={(value) => setSelectedPeriod(value as typeof selectedPeriod)}
-            className="mb-6"
-          >
+          <Tabs value={selectedPeriod} onValueChange={v => setSelectedPeriod(v as any)} className="mb-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">Todas</TabsTrigger>
-              <TabsTrigger value="morning">
-                <Sunrise className="h-4 w-4 mr-2" />
-                Manhã
-              </TabsTrigger>
-              <TabsTrigger value="afternoon">
-                <Sun className="h-4 w-4 mr-2" />
-                Tarde
-              </TabsTrigger>
-              <TabsTrigger value="evening">
-                <Sunset className="h-4 w-4 mr-2" />
-                Noite
-              </TabsTrigger>
+              <TabsTrigger value="MORNING"><Sunrise className="h-4 w-4 mr-2" />Manhã</TabsTrigger>
+              <TabsTrigger value="AFTERNOON"><Sun className="h-4 w-4 mr-2" />Tarde</TabsTrigger>
+              <TabsTrigger value="EVENING"><Sunset className="h-4 w-4 mr-2" />Noite</TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {/* Activities List */}
           <div className="space-y-4">
             {filteredActivities.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">Nenhuma atividade encontrada</p>
-                  <p className="text-sm text-muted-foreground mt-1">Adicione atividades para organizar sua rotina</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="py-12 text-center">Nenhuma atividade encontrada</CardContent></Card>
             ) : (
-              filteredActivities.map((activity) => (
-                <Card key={activity.id} className={activity.completed ? "opacity-60" : ""}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <button
-                        onClick={() => toggleComplete(activity.id)}
-                        className="mt-1 shrink-0 hover:scale-110 transition-transform"
-                      >
-                        {activity.completed ? (
-                          <CheckCircle2 className="h-6 w-6 text-primary" />
-                        ) : (
-                          <Circle className="h-6 w-6 text-muted-foreground" />
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4 mb-2">
-                          <div className="flex-1">
-                            <h3
-                              className={`text-lg font-semibold mb-1 ${
-                                activity.completed ? "line-through text-muted-foreground" : "text-foreground"
-                              }`}
-                            >
-                              {activity.title}
-                            </h3>
-                            {activity.description && (
-                              <p className="text-sm text-muted-foreground mb-3">{activity.description}</p>
-                            )}
-                          </div>
-                          <div className="flex gap-2 shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(activity)}
-                              className="h-8 w-8"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(activity.id)}
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className={getPeriodColor(activity.period)}>
-                            {getPeriodIcon(activity.period)}
-                            <span className="ml-1.5">{getPeriodLabel(activity.period)}</span>
-                          </Badge>
-                          <Badge variant="outline">
-                            {activity.time} • {activity.duration}min
-                          </Badge>
-                          <div className="flex gap-1">
-                            {activity.days.map((day) => (
-                              <Badge key={day} variant="secondary" className="text-xs px-1.5">
-                                {daysOfWeek.find((d) => d.id === day)?.label}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
+              filteredActivities.map(a => (
+                <Card key={a.id} className={a.completed ? "opacity-60" : ""}>
+                  <CardContent className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => toggleComplete(a.id)}>
+                        {a.completed ? <CheckCircle2 /> : <Circle />}
+                      </Button>
+                      <div>
+                        <h3 className={a.completed ? "line-through" : ""}>{a.title}</h3>
+                        <p className="text-sm text-muted-foreground">{a.description}</p>
+                        <Badge variant="outline">{a.period} • {a.duration}min</Badge>
+                        {a.days && <Badge variant="secondary">{a.days}</Badge>}
                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(a)}><Edit /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}><Trash2 /></Button>
                     </div>
                   </CardContent>
                 </Card>
