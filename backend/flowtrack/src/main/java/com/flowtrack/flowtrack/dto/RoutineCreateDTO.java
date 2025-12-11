@@ -22,6 +22,7 @@ public class RoutineCreateDTO {
     private Boolean active = true;
     private Boolean completed = false;
     private LocalDateTime scheduledAt;
+    private String time; // Formato HH:MM
     private Integer duration;
     @NotNull(message = "O período é obrigatório")
     private Period periodo;

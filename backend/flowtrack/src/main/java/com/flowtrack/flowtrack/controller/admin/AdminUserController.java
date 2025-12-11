@@ -33,7 +33,7 @@ public class AdminUserController {
     @Operation(summary = "Listar usuários", description = "Retorna a lista paginada de todos os usuários, com filtro opcional")
     public ResponseEntity<Page<UserDTO>> listUsers(
             @RequestParam(name = "query", required = false) String query,
-            @PageableDefault(size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable
+            @PageableDefault(size = 10, sort = "email", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         Page<User> userPage;
 

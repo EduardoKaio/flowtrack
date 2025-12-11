@@ -18,6 +18,7 @@ public final class RoutineMapper {
             .active(r.getActive())
             .completed(r.getCompleted())
             .scheduledAt(r.getScheduledAt())
+            .time(r.getTime())
             .duration(r.getDuration())
             .days(r.getDays())
             .periodo(r.getPeriodo())
@@ -33,6 +34,7 @@ public final class RoutineMapper {
             .active(dto.getActive() != null ? dto.getActive() : true)
             .completed(dto.getCompleted() != null ? dto.getCompleted() : false)
             .scheduledAt(dto.getScheduledAt())
+            .time(dto.getTime())
             .duration(dto.getDuration())
             .days(dto.getDays())
             .periodo(dto.getPeriodo())
@@ -45,6 +47,7 @@ public final class RoutineMapper {
         if (dto.getActive() != null) r.setActive(dto.getActive());
         if (dto.getCompleted() != null) r.setCompleted(dto.getCompleted());
         r.setScheduledAt(dto.getScheduledAt());
+        r.setTime(dto.getTime());
         if (dto.getDuration() != null) r.setDuration(dto.getDuration());
         r.setDays(dto.getDays());
         if (dto.getPeriodo() != null) r.setPeriodo(dto.getPeriodo());

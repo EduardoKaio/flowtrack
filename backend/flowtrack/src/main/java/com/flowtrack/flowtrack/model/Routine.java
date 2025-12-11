@@ -33,6 +33,9 @@ public class Routine {
     @Column(name = "scheduled_at")
     private LocalDateTime scheduledAt;
 
+    @Column(length = 5)
+    private String time; // Formato HH:MM
+
     @Column(nullable = false)
     private Integer duration;
 

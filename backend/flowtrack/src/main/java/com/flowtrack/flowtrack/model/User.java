@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.persistence.*;
-import jdk.jshell.Snippet;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,6 +25,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String senha;
 
     @Column(nullable = false, length = 20)
@@ -32,15 +33,16 @@ public class User {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pessoa_id", nullable = false)
+    @JsonIgnore
     private Pessoa pessoa;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_hidden_categories",
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
+    @JsonIgnore
     private Set<Category> hiddenCategories = new HashSet<>();
-
 }
 

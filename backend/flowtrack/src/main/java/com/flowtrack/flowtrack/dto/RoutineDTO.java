@@ -19,6 +19,7 @@ public class RoutineDTO {
     private Boolean active;
     private Boolean completed;
     private LocalDateTime scheduledAt;
+    private String time; // Formato HH:MM
     private Integer duration;
     private String days;
     private Period periodo;

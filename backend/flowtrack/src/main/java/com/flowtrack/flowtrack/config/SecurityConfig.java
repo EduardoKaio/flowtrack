@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/h2-console/**"
                         ).permitAll()
+                        .requestMatchers("/api/users/**").hasRole("ADMIN") // Protege rotas de admin
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

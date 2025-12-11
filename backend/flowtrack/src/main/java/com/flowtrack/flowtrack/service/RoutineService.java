@@ -7,8 +7,7 @@ import com.flowtrack.flowtrack.mapper.RoutineMapper;
 import com.flowtrack.flowtrack.model.Routine;
 import com.flowtrack.flowtrack.model.User;
 import com.flowtrack.flowtrack.repository.RoutineRepository;
-import com.flowtrack.flowtrack.repository.UserRepository;
-import com.flowtrack.flowtrack.security.SecurityUtils;
+import com.flowtrack.flowtrack.util.SecurityUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,12 +24,13 @@ import java.util.stream.Collectors;
 public class RoutineService {
 
     private final RoutineRepository routineRepository;
-    private final UserRepository userRepository;
 
     private User getCurrentUserEntity() {
-        User principalUser = SecurityUtils.getCurrentUser();
-        return userRepository.findById(principalUser.getId())
-            .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+        User currentUser = SecurityUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new EntityNotFoundException("Usuário não autenticado");
+        }
+        return currentUser;
     }
 
     public RoutineDTO create(RoutineCreateDTO dto) {

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Service
 public class UserService {
@@ -88,12 +89,13 @@ public class UserService {
     }
 
     public Page<User> getAllUsers(Pageable pageable) {
+        // Usa findAll padrão - o relacionamento LAZY será carregado quando necessário
+        // Não força o carregamento aqui para evitar problemas de duplicação
         return userRepository.findAll(pageable);
     }
 
     public Page<User> searchUsers(String query, Pageable pageable) {
         String searchQuery = "%" + query.toLowerCase() + "%";
-
         return userRepository.searchByNomeOrEmail(searchQuery, pageable);
     }
 
@@ -103,8 +105,8 @@ public class UserService {
 
     @Transactional
     public Optional<User> updateUserFromDTO(Long id, UserDTO dto) {
-
-        Optional<User> userOptional = userRepository.findById(id);
+        // Usa findByIdWithPessoa para garantir que a Pessoa seja carregada corretamente
+        Optional<User> userOptional = userRepository.findByIdWithPessoa(id);
 
         if (userOptional.isEmpty()) {
             return Optional.empty();
@@ -112,24 +114,37 @@ public class UserService {
 
         User userToUpdate = userOptional.get();
 
-        if (dto.getNome() != null && !dto.getNome().isBlank() && userToUpdate.getPessoa() != null) {
-            userToUpdate.getPessoa().setNome(dto.getNome());
+        // Atualiza o nome na Pessoa se fornecido
+        if (dto.getNome() != null && !dto.getNome().isBlank()) {
+            if (userToUpdate.getPessoa() != null) {
+                userToUpdate.getPessoa().setNome(dto.getNome());
+                // Salva a Pessoa explicitamente
+                pessoaRepository.save(userToUpdate.getPessoa());
+            }
         }
 
+        // Atualiza email se fornecido
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
             userToUpdate.setEmail(dto.getEmail());
         }
 
+        // Atualiza role se fornecido
         if (dto.getRole() != null) {
             userToUpdate.setRole(dto.getRole());
         }
 
+        // Salva o User (a Pessoa já foi salva acima)
         User updatedUser = userRepository.save(userToUpdate);
         return Optional.of(updatedUser);
     }
 
     public UserDTO toDTO(User user) {
-        String nome = user.getPessoa() != null ? user.getPessoa().getNome() : null;
+        // Busca o nome da Pessoa diretamente usando query
+        String nome = null;
+        if (user.getPessoa() != null && user.getPessoa().getId() != null) {
+            Optional<String> nomeOpt = pessoaRepository.findNomeById(user.getPessoa().getId());
+            nome = nomeOpt.orElse(null);
+        }
         return new UserDTO(user.getId(), nome, user.getEmail(), user.getRole());
     }
 

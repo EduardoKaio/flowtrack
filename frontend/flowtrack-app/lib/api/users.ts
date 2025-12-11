@@ -110,14 +110,16 @@ export async function getAllUsers(
   const queryParams = new URLSearchParams()
   queryParams.append("page", page.toString())
   queryParams.append("size", size.toString())
-  queryParams.append("sort", "nome,asc") // Define uma ordenação padrão
+  queryParams.append("sort", "email,asc") // Mudado de "nome,asc" para "email,asc"
 
   // Adiciona o parâmetro de busca se ele existir
-  if (query) {
-    queryParams.append("query", query)
+  if (query && query.trim() !== "") {
+    queryParams.append("query", query.trim())
   }
 
-  return apiRequest<PageResponse<User>>(`/users?${queryParams.toString()}`)
+  return apiRequest<PageResponse<User>>(`/users?${queryParams.toString()}`, {
+    method: "GET",
+  })
 }
 
 /**

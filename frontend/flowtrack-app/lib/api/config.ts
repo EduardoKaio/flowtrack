@@ -4,27 +4,32 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 /**
  * Get JWT token from localStorage
  */
+const TOKEN_KEY = "token"
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null
-  return localStorage.getItem("token")
+  return localStorage.getItem(TOKEN_KEY)
 }
 
 /**
  * Set JWT token in localStorage
  */
 export function setToken(token: string): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("token", token)
-  }
+  if (typeof window === "undefined") return
+  localStorage.setItem(TOKEN_KEY, token)
+  // Salva em cookie com opções corretas para o middleware acessar
+  // max-age de 7 dias, SameSite=Lax para segurança, path=/ para estar disponível em todas as rotas
+  document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`
 }
 
 /**
  * Remove JWT token from localStorage
  */
 export function removeToken(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("token")
-  }
+  if (typeof window === "undefined") return
+  localStorage.removeItem(TOKEN_KEY)
+  // Remove o cookie também
+  document.cookie = "token=; path=/; max-age=0"
 }
 
 /**
