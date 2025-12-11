@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -23,17 +22,14 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Edit, CheckCircle2, Circle, Sunrise, Sun, Sunset } from "lucide-react"
-
-interface RoutineActivity {
-  id: number
-  title: string
-  description: string
-  time: string
-  duration: number
-  period: "morning" | "afternoon" | "evening"
-  days: string[]
-  completed: boolean
-}
+import {
+  getAllRoutines,
+  createRoutine,
+  updateRoutine,
+  deleteRoutine,
+  toggleRoutineComplete,
+  type RoutineActivity,
+} from "@/lib/api/rotina"
 
 const daysOfWeek = [
   { id: "dom", label: "Dom" },
@@ -46,62 +42,13 @@ const daysOfWeek = [
 ]
 
 export default function RoutinePage() {
-  const [activities, setActivities] = useState<RoutineActivity[]>([
-    {
-      id: 1,
-      title: "Meditação",
-      description: "10 minutos de meditação guiada",
-      time: "06:30",
-      duration: 10,
-      period: "morning",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Exercícios",
-      description: "Treino funcional",
-      time: "07:00",
-      duration: 30,
-      period: "morning",
-      days: ["seg", "qua", "sex"],
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Revisão de Tarefas",
-      description: "Planejar o dia",
-      time: "09:00",
-      duration: 15,
-      period: "morning",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 4,
-      title: "Almoço",
-      description: "Refeição saudável",
-      time: "12:30",
-      duration: 45,
-      period: "afternoon",
-      days: ["seg", "ter", "qua", "qui", "sex"],
-      completed: false,
-    },
-    {
-      id: 5,
-      title: "Leitura",
-      description: "30 páginas do livro atual",
-      time: "20:00",
-      duration: 30,
-      period: "evening",
-      days: ["seg", "ter", "qua", "qui", "sex", "sab", "dom"],
-      completed: false,
-    },
-  ])
-
+  const [activities, setActivities] = useState<RoutineActivity[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingActivity, setEditingActivity] = useState<RoutineActivity | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<"all" | "morning" | "afternoon" | "evening">("all")
+  const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -112,23 +59,90 @@ export default function RoutinePage() {
     days: [] as string[],
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingActivity) {
-      setActivities(
-        activities.map((activity) =>
-          activity.id === editingActivity.id ? { ...activity, ...formData, completed: activity.completed } : activity,
-        ),
-      )
-    } else {
-      const newActivity: RoutineActivity = {
-        id: Date.now(),
-        ...formData,
-        completed: false,
+  useEffect(() => {
+    async function loadRoutines() {
+      try {
+        setIsLoading(true)
+        const data = await getAllRoutines()
+        setActivities(data)
+      } catch (err) {
+        console.error("Erro ao carregar rotinas", err)
+        setError("Erro ao carregar rotinas")
+      } finally {
+        setIsLoading(false)
       }
-      setActivities([...activities, newActivity])
     }
-    resetForm()
+    loadRoutines()
+  }, [])
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!formData.title || formData.title.trim() === "") {
+      errors.title = "O título é obrigatório"
+    }
+
+    if (!formData.time) {
+      errors.time = "O horário é obrigatório"
+    }
+
+    if (!formData.period) {
+      errors.period = "O período é obrigatório"
+    }
+
+    if (!formData.duration || formData.duration <= 0) {
+      errors.duration = "A duração deve ser maior que zero"
+    }
+
+    if (formData.days.length === 0) {
+      errors.days = "Selecione pelo menos um dia da semana"
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
+      setError("Por favor, preencha todos os campos obrigatórios")
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      if (editingActivity) {
+        const updated = await updateRoutine(editingActivity.id, {
+          title: formData.title.trim(),
+          description: formData.description || "",
+          time: formData.time,
+          duration: formData.duration,
+          period: formData.period,
+          days: formData.days,
+        })
+        setActivities(activities.map((activity) => (activity.id === updated.id ? updated : activity)))
+      } else {
+        const created = await createRoutine({
+          title: formData.title.trim(),
+          description: formData.description || "",
+          time: formData.time,
+          duration: formData.duration,
+          period: formData.period,
+          days: formData.days,
+        })
+        setActivities([...activities, created])
+      }
+
+      resetForm()
+    } catch (err) {
+      console.error("Erro ao salvar rotina", err)
+      setError("Erro ao salvar rotina. Verifique os dados e tente novamente.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const resetForm = () => {
@@ -142,29 +156,51 @@ export default function RoutinePage() {
     })
     setEditingActivity(null)
     setIsDialogOpen(false)
+    setError(null)
+    setValidationErrors({})
   }
 
   const handleEdit = (activity: RoutineActivity) => {
     setEditingActivity(activity)
     setFormData({
       title: activity.title,
-      description: activity.description,
+      description: activity.description || "",
       time: activity.time,
       duration: activity.duration,
       period: activity.period,
       days: activity.days,
     })
     setIsDialogOpen(true)
+    setValidationErrors({})
+    setError(null)
   }
 
-  const handleDelete = (id: number) => {
-    setActivities(activities.filter((activity) => activity.id !== id))
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir esta atividade?")) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      await deleteRoutine(id)
+      setActivities(activities.filter((activity) => activity.id !== id))
+    } catch (err) {
+      console.error("Erro ao deletar rotina", err)
+      setError("Erro ao deletar rotina")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const toggleComplete = (id: number) => {
-    setActivities(
-      activities.map((activity) => (activity.id === id ? { ...activity, completed: !activity.completed } : activity)),
-    )
+  const toggleComplete = async (id: number) => {
+    try {
+      const updated = await toggleRoutineComplete(id)
+      setActivities(
+        activities.map((activity) => (activity.id === id ? updated : activity)),
+      )
+    } catch (err) {
+      console.error("Erro ao alternar conclusão", err)
+    }
   }
 
   const toggleDay = (day: string) => {
@@ -172,6 +208,9 @@ export default function RoutinePage() {
       ...formData,
       days: formData.days.includes(day) ? formData.days.filter((d) => d !== day) : [...formData.days, day],
     })
+    if (validationErrors.days) {
+      setValidationErrors({ ...validationErrors, days: "" })
+    }
   }
 
   const filteredActivities = activities
@@ -229,7 +268,13 @@ export default function RoutinePage() {
             action={
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => setEditingActivity(null)}>
+                  <Button
+                    onClick={() => {
+                      setEditingActivity(null)
+                      setError(null)
+                      setValidationErrors({})
+                    }}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Nova Atividade
                   </Button>
@@ -244,16 +289,34 @@ export default function RoutinePage() {
                           : "Adicione uma nova atividade à sua rotina"}
                       </DialogDescription>
                     </DialogHeader>
+                    {error && (
+                      <div className="mt-4 p-3 bg-red-100 text-red-700 rounded text-sm">
+                        {error}
+                      </div>
+                    )}
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="title">Título</Label>
+                        <Label htmlFor="title">Título *</Label>
                         <Input
                           id="title"
                           value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          onChange={(e) => {
+                            setFormData({ ...formData, title: e.target.value })
+                            if (validationErrors.title) {
+                              setValidationErrors({ ...validationErrors, title: "" })
+                            }
+                            if (error) {
+                              setError(null)
+                            }
+                          }}
                           placeholder="Ex: Meditação matinal"
                           required
+                          className={validationErrors.title ? "border-red-500" : ""}
+                          disabled={isLoading}
                         />
+                        {validationErrors.title && (
+                          <p className="text-sm text-red-500">{validationErrors.title}</p>
+                        )}
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="description">Descrição</Label>
@@ -263,41 +326,76 @@ export default function RoutinePage() {
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           placeholder="Detalhes da atividade"
                           rows={2}
+                          disabled={isLoading}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                          <Label htmlFor="time">Horário</Label>
+                          <Label htmlFor="time">Horário *</Label>
                           <Input
                             id="time"
                             type="time"
                             value={formData.time}
-                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                            onChange={(e) => {
+                              setFormData({ ...formData, time: e.target.value })
+                              if (validationErrors.time) {
+                                setValidationErrors({ ...validationErrors, time: "" })
+                              }
+                              if (error) {
+                                setError(null)
+                              }
+                            }}
                             required
+                            className={validationErrors.time ? "border-red-500" : ""}
+                            disabled={isLoading}
                           />
+                          {validationErrors.time && (
+                            <p className="text-sm text-red-500">{validationErrors.time}</p>
+                          )}
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="duration">Duração (min)</Label>
+                          <Label htmlFor="duration">Duração (min) *</Label>
                           <Input
                             id="duration"
                             type="number"
                             min="5"
                             step="5"
                             value={formData.duration}
-                            onChange={(e) => setFormData({ ...formData, duration: Number.parseInt(e.target.value) })}
+                            onChange={(e) => {
+                              const value = Number.parseInt(e.target.value)
+                              setFormData({ ...formData, duration: value })
+                              if (validationErrors.duration) {
+                                setValidationErrors({ ...validationErrors, duration: "" })
+                              }
+                              if (error) {
+                                setError(null)
+                              }
+                            }}
                             required
+                            className={validationErrors.duration ? "border-red-500" : ""}
+                            disabled={isLoading}
                           />
+                          {validationErrors.duration && (
+                            <p className="text-sm text-red-500">{validationErrors.duration}</p>
+                          )}
                         </div>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="period">Período</Label>
+                        <Label htmlFor="period">Período *</Label>
                         <Select
                           value={formData.period}
-                          onValueChange={(value) =>
+                          onValueChange={(value) => {
                             setFormData({ ...formData, period: value as "morning" | "afternoon" | "evening" })
-                          }
+                            if (validationErrors.period) {
+                              setValidationErrors({ ...validationErrors, period: "" })
+                            }
+                            if (error) {
+                              setError(null)
+                            }
+                          }}
+                          disabled={isLoading}
                         >
-                          <SelectTrigger id="period">
+                          <SelectTrigger id="period" className={validationErrors.period ? "border-red-500" : ""}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -306,9 +404,12 @@ export default function RoutinePage() {
                             <SelectItem value="evening">Noite</SelectItem>
                           </SelectContent>
                         </Select>
+                        {validationErrors.period && (
+                          <p className="text-sm text-red-500">{validationErrors.period}</p>
+                        )}
                       </div>
                       <div className="grid gap-2">
-                        <Label>Dias da Semana</Label>
+                        <Label>Dias da Semana *</Label>
                         <div className="flex flex-wrap gap-2">
                           {daysOfWeek.map((day) => (
                             <Button
@@ -318,18 +419,24 @@ export default function RoutinePage() {
                               size="sm"
                               onClick={() => toggleDay(day.id)}
                               className="w-14"
+                              disabled={isLoading}
                             >
                               {day.label}
                             </Button>
                           ))}
                         </div>
+                        {validationErrors.days && (
+                          <p className="text-sm text-red-500">{validationErrors.days}</p>
+                        )}
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={resetForm}>
+                      <Button type="button" variant="outline" onClick={resetForm} disabled={isLoading}>
                         Cancelar
                       </Button>
-                      <Button type="submit">{editingActivity ? "Atualizar" : "Criar"}</Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? "Salvando..." : editingActivity ? "Atualizar" : "Criar"}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -361,22 +468,29 @@ export default function RoutinePage() {
           </Tabs>
 
           {/* Activities List */}
-          <div className="space-y-4">
-            {filteredActivities.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">Nenhuma atividade encontrada</p>
-                  <p className="text-sm text-muted-foreground mt-1">Adicione atividades para organizar sua rotina</p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredActivities.map((activity) => (
+          {isLoading && activities.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">Carregando rotinas...</p>
+              </CardContent>
+            </Card>
+          ) : filteredActivities.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">Nenhuma atividade encontrada</p>
+                <p className="text-sm text-muted-foreground mt-1">Adicione atividades para organizar sua rotina</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredActivities.map((activity) => (
                 <Card key={activity.id} className={activity.completed ? "opacity-60" : ""}>
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-4">
                       <button
                         onClick={() => toggleComplete(activity.id)}
                         className="mt-1 shrink-0 hover:scale-110 transition-transform"
+                        disabled={isLoading}
                       >
                         {activity.completed ? (
                           <CheckCircle2 className="h-6 w-6 text-primary" />
@@ -404,6 +518,7 @@ export default function RoutinePage() {
                               size="icon"
                               onClick={() => handleEdit(activity)}
                               className="h-8 w-8"
+                              disabled={isLoading}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -412,6 +527,7 @@ export default function RoutinePage() {
                               size="icon"
                               onClick={() => handleDelete(activity.id)}
                               className="h-8 w-8 text-destructive hover:text-destructive"
+                              disabled={isLoading}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -437,9 +553,9 @@ export default function RoutinePage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
