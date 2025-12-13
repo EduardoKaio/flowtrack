@@ -17,9 +17,23 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   if (typeof window === "undefined") return
   localStorage.setItem(TOKEN_KEY, token)
+  
   // Salva em cookie com opcoes corretas para o middleware acessar
   // max-age de 7 dias, SameSite=Lax para seguranca, path=/ para estar disponivel em todas as rotas
-  document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`
+  const isSecure = window.location.protocol === 'https:'
+  const cookieOptions = [
+    `token=${token}`,
+    'path=/',
+    `max-age=${60 * 60 * 24 * 7}`,
+    'SameSite=Lax'
+  ]
+  
+  // So adicionar Secure se estiver em HTTPS
+  if (isSecure) {
+    cookieOptions.push('Secure')
+  }
+  
+  document.cookie = cookieOptions.join('; ')
 }
 
 /**
