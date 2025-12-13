@@ -1,0 +1,103 @@
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: flowtrack-postgres
+    environment:
+      POSTGRES_DB: flowtrack
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      PGTZ: America/Sao_Paulo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/flowtrack/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    networks:
+      - flowtrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Backend Spring Boot
+  backend:
+    build:
+      context: ./backend/flowtrack
+      dockerfile: Dockerfile
+    container_name: flowtrack-backend
+    environment:
+      # Configuracoes da Aplicacao
+      SPRING_APPLICATION_NAME: flowtrack
+      SERVER_PORT: 8080
+      
+      # Configuracoes do Banco de Dados
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowtrack?timezone=America/Sao_Paulo
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      
+      # Configuracoes HikariCP
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
+      SPRING_DATASOURCE_HIKARI_MAX_LIFETIME: 600000
+      SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT: 120000
+      
+      # Configuracoes JPA/Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE: America/Sao_Paulo
+      
+      # Configuracoes Flyway
+      SPRING_FLYWAY_ENCODING: UTF-8
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_CLEAN_DISABLED: "true"
+      
+      # Configuracoes Jackson
+      SPRING_JACKSON_TIME_ZONE: America/Sao_Paulo
+      SPRING_JACKSON_DATE_FORMAT: yyyy-MM-dd'T'HH:mm:ss
+      SPRING_JACKSON_DESERIALIZATION_ADJUST_DATES_TO_CONTEXT_TIME_ZONE: "false"
+      
+      # Configuracoes JWT
+      JWT_SECRET: mySecretKey12345678901234567890123456789012345678901234567890
+      JWT_EXPIRATION: 86400000
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flowtrack-network
+    restart: unless-stopped
+    volumes:
+      # Montar o .env da raiz do projeto (opcional, se quiser usar)
+      - ./.env:/app/.env:ro
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend/flowtrack-app
+      dockerfile: Dockerfile
+    container_name: flowtrack-frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api
+      # Para producao, use: http://backend:8080/api (dentro da rede Docker)
+      # Mas como o frontend roda no browser, precisa ser acessivel externamente
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - flowtrack-network
+    restart: unless-stopped
+
+networks:
+  flowtrack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

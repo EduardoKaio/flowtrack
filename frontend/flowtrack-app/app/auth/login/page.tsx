@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,11 @@ import { LayoutDashboard, Mail, Lock, Chrome, AlertCircle, CheckCircle2 } from "
 import { loginUser } from "@/lib/api/users"
 import { setToken } from "@/lib/api/config"
 
-export default function LoginPage() {
+// Forcar renderizacao dinamica para evitar prerender
+export const dynamic = 'force-dynamic'
+
+// Componente interno que usa useSearchParams
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get("registered")
@@ -30,10 +34,10 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("")
   const alertShown = useRef(false)
 
-  // Mostra mensagem amigável de conta criada
+  // Mostra mensagem amigavel de conta criada
   useEffect(() => {
     if (!alertShown.current && registered === "true") {
-      setSuccessMsg("Conta criada com sucesso! Faça login para continuar.")
+      setSuccessMsg("Conta criada com sucesso! Faca login para continuar.")
       alertShown.current = true
     }
   }, [registered])
@@ -50,7 +54,7 @@ export default function LoginPage() {
       // Armazena o token JWT
       setToken(authResponse.token)
 
-      // Armazena informações básicas no localStorage
+      // Armazena informacoes basicas no localStorage
       localStorage.setItem("isAuthenticated", "true")
       localStorage.setItem("userEmail", authResponse.user.email)
       localStorage.setItem("userName", authResponse.user.nome)
@@ -74,7 +78,7 @@ export default function LoginPage() {
     setTimeout(() => {
       localStorage.setItem("isAuthenticated", "true")
       localStorage.setItem("userEmail", "usuario@gmail.com")
-      localStorage.setItem("userName", "Usuário")
+      localStorage.setItem("userName", "Usuario")
       localStorage.setItem("isAdmin", "false")
       router.push("/")
     }, 1000)
@@ -181,7 +185,7 @@ export default function LoginPage() {
 
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-sm text-center text-muted-foreground">
-              Não tem uma conta?{" "}
+              Nao tem uma conta?{" "}
               <Link
                 href="/auth/register"
                 className="text-primary hover:underline font-medium"
@@ -193,10 +197,40 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Ao continuar, você concorda com nossos Termos de Serviço e Política de
+          Ao continuar, voce concorda com nossos Termos de Servico e Politica de
           Privacidade
         </p>
       </div>
     </div>
+  )
+}
+
+// Componente de fallback para Suspense
+function LoginFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="w-full max-w-md">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <LayoutDashboard className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <h1 className="text-3xl font-bold text-foreground">FlowTrack</h1>
+        </div>
+        <Card className="border-2">
+          <CardContent className="p-6">
+            <div className="text-center text-muted-foreground">Carregando...</div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// Componente principal exportado com Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
   )
 }
