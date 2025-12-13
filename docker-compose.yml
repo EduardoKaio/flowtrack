@@ -83,7 +83,7 @@ services:
     container_name: flowtrack-frontend
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:8080/api
+      NEXT_PUBLIC_API_URL: http://3.131.93.0:8080/api
       # Para producao, use: http://backend:8080/api (dentro da rede Docker)
       # Mas como o frontend roda no browser, precisa ser acessivel externamente
     ports:
