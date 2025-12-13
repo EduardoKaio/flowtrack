@@ -59,10 +59,13 @@ out/
 build/
 
 # Arquivos de ambiente local (MUITO IMPORTANTE)
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+backend/flowtrack/.env
+backend/.env
 
 # Arquivos de log do NPM/Yarn
 npm-debug.log*
