@@ -65,11 +65,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://3.131.93.0:3000")); // front-end
+        // Permitir multiplas origens (desenvolvimento e producao)
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:3000",
+            "http://3.131.93.0:3000",
+            "http://localhost:8080" // Caso precise acessar diretamente
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setMaxAge(3600L); // Cache preflight por 1 hora
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

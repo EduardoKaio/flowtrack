@@ -80,12 +80,14 @@ services:
     build:
       context: ./frontend/flowtrack-app
       dockerfile: Dockerfile
+      args:
+        # Passar a variavel no build (NEXT_PUBLIC_* precisa ser definida no build)
+        NEXT_PUBLIC_API_URL: http://3.131.93.0:8080/api
     container_name: flowtrack-frontend
     environment:
       NODE_ENV: production
+      # Esta variavel so funciona em runtime, mas NEXT_PUBLIC_* precisa estar no build
       NEXT_PUBLIC_API_URL: http://3.131.93.0:8080/api
-      # Para producao, use: http://backend:8080/api (dentro da rede Docker)
-      # Mas como o frontend roda no browser, precisa ser acessivel externamente
     ports:
       - "3000:3000"
     depends_on:
