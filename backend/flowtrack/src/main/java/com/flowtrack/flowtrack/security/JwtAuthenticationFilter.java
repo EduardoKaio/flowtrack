@@ -30,6 +30,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         
+        // Permitir requisições OPTIONS (preflight CORS) passarem sem autenticação
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         String token = getTokenFromRequest(request);
         String authHeader = request.getHeader("Authorization");
         
@@ -67,8 +73,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else {
             if (authHeader != null) {
                 System.err.println("JWT: Authorization header present but token extraction failed. Header: " + authHeader.substring(0, Math.min(20, authHeader.length())));
-            } else {
-                System.err.println("JWT: No Authorization header for request: " + request.getRequestURI());
             }
         }
         

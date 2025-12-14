@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/h2-console/**"
                         ).permitAll()
+                        // Permitir requisições OPTIONS (preflight CORS)
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/users/**").hasRole("ADMIN") // Protege rotas de admin
                         .anyRequest().authenticated()
                 )
