@@ -70,7 +70,7 @@ public class SecurityConfig {
         // Permitir multiplas origens (desenvolvimento e producao)
         configuration.setAllowedOrigins(List.of(
             "http://localhost:3000",
-            "http://3.131.93.0:3000",
+            "http://13.59.17.130:3000",
             "http://localhost:8080" // Caso precise acessar diretamente
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
