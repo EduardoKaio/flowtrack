@@ -22,22 +22,19 @@ services:
     build:
       context: ./backend/flowtrack
     container_name: flowtrack-backend
+    
+    # 1. Carrega todas as variáveis do seu arquivo .env
+    env_file:
+      - .env
+      
+    # 2. Sobrescreve APENAS o que precisa ser diferente dentro do Docker
     environment:
-      SPRING_APPLICATION_NAME: flowtrack
-      SERVER_PORT: 8080
+      # AQUI ESTÁ O TRUQUE: Mudamos de localhost para postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowtrack?timezone=America/Sao_Paulo
+      
+      # Garantir que o driver seja lido (caso o .env falhe)
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
 
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowtrack
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: admin123
-
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-
-      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
-      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
-      SPRING_FLYWAY_CLEAN_DISABLED: "true"
-
-      # Crie um arquivo .env com JWT_SECRET=sua_senha para sumir o aviso
-      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy

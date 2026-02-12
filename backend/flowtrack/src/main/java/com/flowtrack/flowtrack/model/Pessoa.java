@@ -32,6 +32,15 @@ public class Pessoa {
     @Column(length = 200)
     private String endereco;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
+    @Column(length = 200)
+    private String location;
+
     @OneToOne(mappedBy = "pessoa", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private User user;
 }
